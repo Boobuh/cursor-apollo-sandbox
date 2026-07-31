@@ -1,8 +1,8 @@
 {
   "name": "cursor-apollo-sandbox",
   "displayName": "Cursor Apollo Sandbox",
-  "description": "Fill Apollo Server Sandbox in Cursor's embedded browser — operation, variables, headers, and authenticated runs.",
-  "version": "0.1.0",
+  "description": "Fill Apollo Server Sandbox in Cursor for any GraphQL project — operation, variables, headers, and authenticated runs.",
+  "version": "0.2.0",
   "publisher": "oleh-helei",
   "license": "MIT",
   "repository": {
@@ -18,8 +18,8 @@
   "activationEvents": [
     "onCommand:apolloSandbox.captureAuth",
     "onCommand:apolloSandbox.fillSandbox",
-    "onCommand:apolloSandbox.runExport",
-    "onCommand:apolloSandbox.setupExportTemplate",
+    "onCommand:apolloSandbox.runOperation",
+    "onCommand:apolloSandbox.setupSandbox",
     "onCommand:apolloSandbox.openGraphql"
   ],
   "main": "./dist/extension.js",
@@ -27,7 +27,7 @@
     "commands": [
       {
         "command": "apolloSandbox.captureAuth",
-        "title": "Apollo Sandbox: Capture Auth",
+        "title": "Apollo Sandbox: Capture Auth Headers",
         "category": "Apollo Sandbox"
       },
       {
@@ -36,13 +36,13 @@
         "category": "Apollo Sandbox"
       },
       {
-        "command": "apolloSandbox.runExport",
+        "command": "apolloSandbox.runOperation",
         "title": "Apollo Sandbox: Run Operation (parent fetch)",
         "category": "Apollo Sandbox"
       },
       {
-        "command": "apolloSandbox.setupExportTemplate",
-        "title": "Apollo Sandbox: Setup Sandbox (auth + fill)",
+        "command": "apolloSandbox.setupSandbox",
+        "title": "Apollo Sandbox: Setup (capture auth + fill)",
         "category": "Apollo Sandbox"
       },
       {
@@ -54,15 +54,32 @@
     "configuration": {
       "title": "Apollo Sandbox",
       "properties": {
-        "apolloSandbox.catalogUrl": {
-          "type": "string",
-          "default": "",
-          "description": "App page used to capture Bearer token (must trigger /graphql while logged in)."
-        },
         "apolloSandbox.graphqlUrl": {
           "type": "string",
           "default": "http://localhost:4000/graphql",
-          "description": "Apollo Server landing page / GraphQL endpoint URL."
+          "description": "Apollo Server Sandbox / GraphQL endpoint URL (also used for fill and run)."
+        },
+        "apolloSandbox.authCaptureUrl": {
+          "type": "string",
+          "default": "",
+          "description": "Optional page where your app sends GraphQL requests while logged in. If empty, graphqlUrl is used."
+        },
+        "apolloSandbox.graphqlUrlMatch": {
+          "type": "string",
+          "default": "",
+          "description": "Substring to match GraphQL requests when capturing headers. Empty = derive from graphqlUrl pathname (e.g. /graphql)."
+        },
+        "apolloSandbox.defaultOperation": {
+          "type": "string",
+          "default": "query ExampleQuery {\n  __typename\n}",
+          "editPresentation": "multilineText",
+          "description": "GraphQL operation pre-filled in Sandbox (multi-line)."
+        },
+        "apolloSandbox.defaultVariables": {
+          "type": "string",
+          "default": "{}",
+          "editPresentation": "multilineText",
+          "description": "JSON object for Sandbox variables panel."
         },
         "apolloSandbox.sandboxWaitMs": {
           "type": "number",
