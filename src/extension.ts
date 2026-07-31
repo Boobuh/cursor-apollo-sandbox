@@ -1,7 +1,11 @@
 import * as vscode from "vscode";
 import { CursorBrowser, ensureBrowserTab } from "./browser";
 import {
-  buildCaptureAuthScript,
+  buildAutoDetectHeadersScript,
+  buildPersistHeadersScript,
+  mergeDetectedHeaders
+} from "./apollo/header-detection";
+import {
   buildFillSandboxScript,
   buildRunOperationScript,
   buildSandboxIframeUrl,
@@ -10,7 +14,11 @@ import {
   FALLBACK_VARIABLES_JSON,
   parseVariablesJson
 } from "./apollo/sandbox";
-import type { CapturedGraphqlAuth, SandboxConfig } from "./apollo/sandbox.types";
+import type {
+  CapturedGraphqlAuth,
+  HeaderDetectionResult,
+  SandboxConfig
+} from "./apollo/sandbox.types";
 
 function getConfig(): SandboxConfig {
   const cfg = vscode.workspace.getConfiguration("apolloSandbox");
@@ -30,59 +38,104 @@ function getConfig(): SandboxConfig {
       cfg.get<string>("graphqlUrlMatch")?.trim() ||
       deriveGraphqlUrlMatch(graphqlUrl),
     sandboxWaitMs: cfg.get<number>("sandboxWaitMs") ?? 9000,
+    headerDetectMs: cfg.get<number>("headerDetectMs") ?? 6000,
     defaultOperation,
     defaultVariablesJson: defaultVariablesRaw
   };
 }
 
-function authCaptureTarget(config: SandboxConfig): string {
-  return config.authCaptureUrl.trim() || config.graphqlUrl;
+function collectTargetHosts(config: SandboxConfig): Set<string> {
+  const hosts = new Set<string>();
+  for (const raw of [config.graphqlUrl, config.authCaptureUrl.trim()]) {
+    if (!raw) continue;
+    try {
+      hosts.add(new URL(raw).hostname);
+    } catch {
+      /* ignore invalid URL */
+    }
+  }
+  return hosts;
 }
 
-async function captureAuth(
-  browser: CursorBrowser,
-  viewId?: string
+async function autoDetectHeaders(
+  browser: CursorBrowser
 ): Promise<CapturedGraphqlAuth> {
   const config = getConfig();
-  const targetUrl = authCaptureTarget(config);
-  const tabId = await ensureBrowserTab(browser, targetUrl, viewId);
-  await browser.waitForLoad(2000);
+  const detectScript = buildAutoDetectHeadersScript(
+    config.graphqlUrl,
+    config.graphqlUrlMatch,
+    config.headerDetectMs
+  );
+  const hosts = collectTargetHosts(config);
+  const parts: HeaderDetectionResult[] = [];
+  const visitedTabs = new Set<string>();
 
-  const auth = await browser.executeJavaScript<CapturedGraphqlAuth | null>(
-    buildCaptureAuthScript(
-      config.graphqlUrlMatch,
-      config.sandboxWaitMs
-    ),
-    tabId
+  for (const tab of await browser.listTabs()) {
+    if (!tab.viewId || !tab.url) continue;
+    let host = "";
+    try {
+      host = new URL(tab.url).hostname;
+    } catch {
+      continue;
+    }
+    if (!hosts.has(host)) continue;
+    visitedTabs.add(tab.viewId);
+    const result = await browser.executeJavaScript<HeaderDetectionResult>(
+      detectScript,
+      tab.viewId
+    );
+    if (result) parts.push(result);
+  }
+
+  const urlsToOpen = [
+    config.authCaptureUrl.trim(),
+    config.graphqlUrl
+  ].filter(Boolean);
+
+  for (const url of urlsToOpen) {
+    const tabId = await ensureBrowserTab(browser, url);
+    if (visitedTabs.has(tabId)) continue;
+    visitedTabs.add(tabId);
+    await browser.waitForLoad(1500);
+    const result = await browser.executeJavaScript<HeaderDetectionResult>(
+      detectScript,
+      tabId
+    );
+    if (result) parts.push(result);
+  }
+
+  const merged = mergeDetectedHeaders(...parts);
+
+  const gqlTab = await ensureBrowserTab(browser, config.graphqlUrl);
+  await browser.executeJavaScript(
+    buildPersistHeadersScript(merged.headers, merged),
+    gqlTab
   );
 
-  if (!auth?.graphqlSeen && !Object.keys(auth?.headers ?? {}).length) {
+  if (
+    !merged.probeOk &&
+    !Object.keys(merged.headers).length &&
+    !merged.graphqlSeen
+  ) {
     throw new Error(
-      "No GraphQL traffic captured. Open a logged-in app page that calls your API, interact with it, then retry."
+      "Could not auto-detect GraphQL headers. Log into your app in the Cursor browser, trigger a GraphQL request, then retry."
     );
   }
 
-  return {
-    headers: auth?.headers ?? {},
-    graphqlSeen: auth?.graphqlSeen
-  };
+  return merged;
 }
 
 async function fillSandbox(
   browser: CursorBrowser,
+  auth: CapturedGraphqlAuth,
   viewId?: string
-): Promise<void> {
+): Promise<string[]> {
   const config = getConfig();
   const tabId = await ensureBrowserTab(browser, config.graphqlUrl, viewId);
 
-  const auth = await browser.executeJavaScript<CapturedGraphqlAuth | null>(
-    `JSON.parse(sessionStorage.getItem('__apolloAuth')||'{"headers":{}}')`,
-    tabId
-  );
-
   const iframeUrl = buildSandboxIframeUrl(
     config.graphqlUrl,
-    { headers: auth?.headers ?? {} },
+    auth,
     config.defaultOperation,
     config.defaultVariablesJson
   );
@@ -96,6 +149,8 @@ async function fillSandbox(
   if (result?.err) {
     throw new Error(result.err);
   }
+
+  return result?.headerKeys ?? Object.keys(auth.headers);
 }
 
 async function runOperation(
@@ -134,16 +189,18 @@ async function runOperation(
 
 function headerSummary(auth: CapturedGraphqlAuth): string {
   const keys = Object.keys(auth.headers);
+  const sources = auth.sources?.length
+    ? ` (${auth.sources.join(", ")})`
+    : "";
+  const verified = auth.probeOk ? " — probe OK" : "";
+
   if (!keys.length) {
-    return auth.graphqlSeen
-      ? "Captured GraphQL session (cookie auth — no extra headers)."
-      : "Captured GraphQL session.";
+    return auth.probeOk || auth.graphqlSeen
+      ? `Using cookie session for GraphQL${sources}${verified}.`
+      : `No extra headers detected${sources}.`;
   }
-  const authKey = keys.find((k) => /^authorization$/i.test(k));
-  if (authKey) {
-    return `Captured ${keys.length} header(s) including Authorization.`;
-  }
-  return `Captured ${keys.length} header(s): ${keys.slice(0, 4).join(", ")}${keys.length > 4 ? "…" : ""}`;
+
+  return `Auto-detected ${keys.length} header(s): ${keys.join(", ")}${sources}${verified}.`;
 }
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -160,10 +217,10 @@ export function activate(context: vscode.ExtensionContext): void {
       await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
-          title: "Apollo Sandbox: capturing GraphQL headers…"
+          title: "Apollo Sandbox: auto-detecting headers…"
         },
         async () => {
-          const auth = await captureAuth(browser);
+          const auth = await autoDetectHeaders(browser);
           vscode.window.showInformationMessage(headerSummary(auth));
         }
       );
@@ -173,12 +230,13 @@ export function activate(context: vscode.ExtensionContext): void {
       await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
-          title: "Apollo Sandbox: filling operation, variables, headers…"
+          title: "Apollo Sandbox: detecting headers and filling…"
         },
         async () => {
-          await fillSandbox(browser);
+          const auth = await autoDetectHeaders(browser);
+          await fillSandbox(browser, auth);
           vscode.window.showInformationMessage(
-            "Apollo Sandbox filled (formatted operation, variables, headers)."
+            `Sandbox filled. ${headerSummary(auth)}`
           );
         }
       );
@@ -188,9 +246,10 @@ export function activate(context: vscode.ExtensionContext): void {
       await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
-          title: "Apollo Sandbox: running operation…"
+          title: "Apollo Sandbox: detecting headers and running…"
         },
         async () => {
+          await autoDetectHeaders(browser);
           const { data, ms } = await runOperation(browser);
           const preview = data
             ? JSON.stringify(data).slice(0, 120)
@@ -204,13 +263,13 @@ export function activate(context: vscode.ExtensionContext): void {
       await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
-          title: "Apollo Sandbox: setup…"
+          title: "Apollo Sandbox: auto-detect, fill…"
         },
         async () => {
-          await captureAuth(browser);
-          await fillSandbox(browser);
+          const auth = await autoDetectHeaders(browser);
+          await fillSandbox(browser, auth);
           vscode.window.showInformationMessage(
-            "Apollo Sandbox ready — operation, variables, and headers applied."
+            `Apollo Sandbox ready. ${headerSummary(auth)}`
           );
         }
       );

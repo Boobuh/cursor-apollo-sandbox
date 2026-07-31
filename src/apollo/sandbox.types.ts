@@ -2,6 +2,13 @@
 export interface CapturedGraphqlAuth {
   headers: Record<string, string>;
   graphqlSeen?: boolean;
+  probeOk?: boolean;
+  sources?: string[];
+}
+
+export interface HeaderDetectionResult extends CapturedGraphqlAuth {
+  probeOk: boolean;
+  sources: string[];
 }
 
 export interface SandboxConfig {
@@ -9,6 +16,7 @@ export interface SandboxConfig {
   graphqlUrl: string;
   graphqlUrlMatch: string;
   sandboxWaitMs: number;
+  headerDetectMs: number;
   defaultOperation: string;
   defaultVariablesJson: string;
 }

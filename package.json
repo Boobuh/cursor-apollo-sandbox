@@ -2,7 +2,7 @@
   "name": "cursor-apollo-sandbox",
   "displayName": "Cursor Apollo Sandbox",
   "description": "Fill Apollo Server Sandbox in Cursor for any GraphQL project — operation, variables, headers, and authenticated runs.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "oleh-helei",
   "license": "MIT",
   "repository": {
@@ -27,7 +27,7 @@
     "commands": [
       {
         "command": "apolloSandbox.captureAuth",
-        "title": "Apollo Sandbox: Capture Auth Headers",
+        "title": "Apollo Sandbox: Auto-detect Headers",
         "category": "Apollo Sandbox"
       },
       {
@@ -42,7 +42,7 @@
       },
       {
         "command": "apolloSandbox.setupSandbox",
-        "title": "Apollo Sandbox: Setup (capture auth + fill)",
+        "title": "Apollo Sandbox: Setup (auto-detect + fill)",
         "category": "Apollo Sandbox"
       },
       {
@@ -85,6 +85,11 @@
           "type": "number",
           "default": 9000,
           "description": "Milliseconds to wait after reloading the Sandbox iframe."
+        },
+        "apolloSandbox.headerDetectMs": {
+          "type": "number",
+          "default": 6000,
+          "description": "Milliseconds to listen for GraphQL traffic and probe the endpoint when auto-detecting headers."
         }
       }
     }

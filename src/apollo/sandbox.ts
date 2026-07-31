@@ -6,14 +6,7 @@ export const FALLBACK_OPERATION = `query ExampleQuery {
 
 export const FALLBACK_VARIABLES_JSON = "{}";
 
-const SKIP_REQUEST_HEADERS = new Set([
-  "content-length",
-  "content-type",
-  "accept",
-  "host",
-  "connection",
-  "accept-encoding"
-]);
+export type { CapturedGraphqlAuth };
 
 export function deriveGraphqlUrlMatch(graphqlUrl: string): string {
   try {
@@ -60,83 +53,6 @@ export function buildSandboxIframeUrl(
   });
 
   return `https://sandbox.embed.apollographql.com/sandbox/explorer?${params.toString()}`;
-}
-
-export function buildCaptureAuthScript(urlMatch: string, waitMs: number): string {
-  const skipList = JSON.stringify([...SKIP_REQUEST_HEADERS]);
-  return `(async () => {
-  const urlMatch = ${JSON.stringify(urlMatch)};
-  const waitMs = ${waitMs};
-  const skip = new Set(${skipList});
-  window.__capturedAuth = null;
-  window.__graphqlSeen = false;
-
-  const normalizeHeaders = (input) => {
-    const out = {};
-    if (!input) return out;
-    const add = (k, v) => {
-      if (v == null || v === '') return;
-      const key = String(k);
-      if (skip.has(key.toLowerCase())) return;
-      out[key] = String(v);
-    };
-    if (typeof input.forEach === 'function') input.forEach((v, k) => add(k, v));
-    else if (Array.isArray(input)) {
-      for (let i = 0; i < input.length; i += 2) add(input[i], input[i + 1]);
-    } else {
-      for (const [k, v] of Object.entries(input)) add(k, v);
-    }
-    return out;
-  };
-
-  const matchesGraphql = (url) => {
-    const u = String(url || '');
-    return u.includes('graphql') || (urlMatch && u.includes(urlMatch));
-  };
-
-  const save = (rawHeaders) => {
-    const headers = normalizeHeaders(rawHeaders);
-    window.__graphqlSeen = true;
-    const prev = window.__capturedAuth?.headers || {};
-    window.__capturedAuth = {
-      headers: { ...prev, ...headers },
-      graphqlSeen: true
-    };
-    sessionStorage.setItem('__apolloAuth', JSON.stringify(window.__capturedAuth));
-  };
-
-  const origFetch = window.fetch;
-  window.fetch = async function(...args) {
-    const [url, opts] = args;
-    const u = typeof url === 'string' ? url : url?.url;
-    if (matchesGraphql(u)) save(opts?.headers || {});
-    return origFetch.apply(this, args);
-  };
-
-  const origOpen = XMLHttpRequest.prototype.open;
-  const origSend = XMLHttpRequest.prototype.send;
-  const origSetHeader = XMLHttpRequest.prototype.setRequestHeader;
-  XMLHttpRequest.prototype.open = function(m, url, ...r) {
-    this.__url = url;
-    return origOpen.call(this, m, url, ...r);
-  };
-  XMLHttpRequest.prototype.setRequestHeader = function(k, v) {
-    this.__headers = this.__headers || {};
-    this.__headers[k] = v;
-    return origSetHeader.call(this, k, v);
-  };
-  XMLHttpRequest.prototype.send = function(b) {
-    if (matchesGraphql(this.__url)) save(this.__headers || {});
-    return origSend.call(this, b);
-  };
-
-  const deadline = Date.now() + waitMs;
-  while (Date.now() < deadline && !window.__graphqlSeen) {
-    await new Promise(r => setTimeout(r, 500));
-  }
-
-  return window.__capturedAuth || JSON.parse(sessionStorage.getItem('__apolloAuth') || 'null');
-})()`;
 }
 
 export function buildFillSandboxScript(iframeUrl: string, waitMs: number): string {
@@ -247,7 +163,5 @@ export function buildRunOperationScript(
     data: json?.data,
     errors: json?.errors?.map(e => e.message)
   };
-})()`;
+  })()`;
 }
-
-export type { CapturedGraphqlAuth };
