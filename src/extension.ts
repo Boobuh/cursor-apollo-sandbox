@@ -4,15 +4,15 @@ import {
   ApolloAuth,
   buildCaptureAuthScript,
   buildFillSandboxScript,
-  buildRunExportScript,
+  buildRunOperationScript,
   buildSandboxIframeUrl
 } from "./apollo/export-template";
 
 function getConfig() {
   const cfg = vscode.workspace.getConfiguration("apolloSandbox");
   return {
-    lmsCatalogUrl: cfg.get<string>("lmsCatalogUrl")!,
-    graphqlUrl: cfg.get<string>("graphqlUrl")!,
+    catalogUrl: cfg.get<string>("catalogUrl") ?? "",
+    graphqlUrl: cfg.get<string>("graphqlUrl") ?? "http://localhost:4000/graphql",
     sandboxWaitMs: cfg.get<number>("sandboxWaitMs") ?? 9000
   };
 }
@@ -21,8 +21,14 @@ async function captureAuth(
   browser: CursorBrowser,
   viewId?: string
 ): Promise<ApolloAuth> {
-  const { lmsCatalogUrl } = getConfig();
-  const tabId = await ensureBrowserTab(browser, lmsCatalogUrl, viewId);
+  const { catalogUrl } = getConfig();
+  if (!catalogUrl.trim()) {
+    throw new Error(
+      "Set apolloSandbox.catalogUrl in Settings (page that triggers /graphql while logged in)."
+    );
+  }
+
+  const tabId = await ensureBrowserTab(browser, catalogUrl, viewId);
   await browser.waitForLoad(2000);
 
   const auth = await browser.executeJavaScript<ApolloAuth | null>(
@@ -32,7 +38,7 @@ async function captureAuth(
 
   if (!auth?.authorization) {
     throw new Error(
-      "No Bearer token captured. Log into LMS in the Cursor browser tab, then retry."
+      "No Bearer token captured. Log into your app in the Cursor browser tab, then retry."
     );
   }
 
@@ -53,7 +59,7 @@ async function fillSandbox(
 
   if (!auth?.authorization) {
     throw new Error(
-      "No auth in sessionStorage. Run “Capture LMS Auth” first."
+      'No auth in sessionStorage. Run "Capture Auth" first.'
     );
   }
 
@@ -68,32 +74,31 @@ async function fillSandbox(
   }
 }
 
-async function runExport(
+async function runOperation(
   browser: CursorBrowser,
   viewId?: string
-): Promise<{ urlPrefix?: string; ms?: number }> {
+): Promise<{ data?: unknown; ms?: number }> {
   const { graphqlUrl } = getConfig();
   const tabId = await ensureBrowserTab(browser, graphqlUrl, viewId);
 
   const result = await browser.executeJavaScript<{
     err?: string;
-    hasUrl?: boolean;
-    urlPrefix?: string;
+    data?: unknown;
     ms?: number;
     errors?: string[];
-  }>(buildRunExportScript(), tabId);
+  }>(buildRunOperationScript(), tabId);
 
-  if (result?.err) {
+  if (!result) {
+    throw new Error("No response from browser");
+  }
+  if (result.err) {
     throw new Error(result.err);
   }
-  if (result?.errors?.length) {
+  if (result.errors?.length) {
     throw new Error(result.errors.join("; "));
   }
-  if (!result?.hasUrl) {
-    throw new Error("Export did not return a URL");
-  }
 
-  return { urlPrefix: result.urlPrefix, ms: result.ms };
+  return { data: result.data, ms: result.ms };
 }
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -110,12 +115,15 @@ export function activate(context: vscode.ExtensionContext): void {
       await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
-          title: "Apollo Sandbox: capturing LMS auth…"
+          title: "Apollo Sandbox: capturing auth…"
         },
         async () => {
           const auth = await captureAuth(browser);
+          const companyHint = auth["x-company-id"]?.slice(0, 8);
           vscode.window.showInformationMessage(
-            `Captured Bearer for company ${auth["x-company-id"]?.slice(0, 8) ?? "?"}…`
+            companyHint
+              ? `Captured Bearer (company ${companyHint}…)`
+              : "Captured Bearer token."
           );
         }
       );
@@ -140,13 +148,12 @@ export function activate(context: vscode.ExtensionContext): void {
       await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
-          title: "Apollo Sandbox: running export…"
+          title: "Apollo Sandbox: running operation…"
         },
         async () => {
-          const { urlPrefix, ms } = await runExport(browser);
-          vscode.window.showInformationMessage(
-            `Export OK (${ms}ms): ${urlPrefix ?? "see browser Response panel"}`
-          );
+          const { data, ms } = await runOperation(browser);
+          const preview = data ? JSON.stringify(data).slice(0, 120) : "see Response panel";
+          vscode.window.showInformationMessage(`OK (${ms}ms): ${preview}`);
         }
       );
     }),
@@ -157,13 +164,13 @@ export function activate(context: vscode.ExtensionContext): void {
         await vscode.window.withProgress(
           {
             location: vscode.ProgressLocation.Notification,
-            title: "Apollo Sandbox: setup export template…"
+            title: "Apollo Sandbox: setup sandbox…"
           },
           async () => {
             await captureAuth(browser);
             await fillSandbox(browser);
             vscode.window.showInformationMessage(
-              "Apollo Sandbox ready — ExportImportTemplate with auth headers."
+              "Apollo Sandbox ready — default operation with auth headers."
             );
           }
         );

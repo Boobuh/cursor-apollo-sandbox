@@ -1,7 +1,7 @@
 {
   "name": "cursor-apollo-sandbox",
   "displayName": "Cursor Apollo Sandbox",
-  "description": "Fill Apollo Server Sandbox in Cursor's embedded browser — operation, variables, headers, and GraphQL export.",
+  "description": "Fill Apollo Server Sandbox in Cursor's embedded browser — operation, variables, headers, and authenticated runs.",
   "version": "0.1.0",
   "publisher": "oleh-helei",
   "license": "MIT",
@@ -12,7 +12,9 @@
   "engines": {
     "vscode": "^1.85.0"
   },
-  "categories": ["Other"],
+  "categories": [
+    "Other"
+  ],
   "activationEvents": [
     "onCommand:apolloSandbox.captureAuth",
     "onCommand:apolloSandbox.fillSandbox",
@@ -25,22 +27,22 @@
     "commands": [
       {
         "command": "apolloSandbox.captureAuth",
-        "title": "Apollo Sandbox: Capture LMS Auth",
+        "title": "Apollo Sandbox: Capture Auth",
         "category": "Apollo Sandbox"
       },
       {
         "command": "apolloSandbox.fillSandbox",
-        "title": "Apollo Sandbox: Fill Export Template",
+        "title": "Apollo Sandbox: Fill Sandbox",
         "category": "Apollo Sandbox"
       },
       {
         "command": "apolloSandbox.runExport",
-        "title": "Apollo Sandbox: Run Export (parent fetch)",
+        "title": "Apollo Sandbox: Run Operation (parent fetch)",
         "category": "Apollo Sandbox"
       },
       {
         "command": "apolloSandbox.setupExportTemplate",
-        "title": "Apollo Sandbox: Setup Export Template (auth + fill)",
+        "title": "Apollo Sandbox: Setup Sandbox (auth + fill)",
         "category": "Apollo Sandbox"
       },
       {
@@ -52,14 +54,14 @@
     "configuration": {
       "title": "Apollo Sandbox",
       "properties": {
-        "apolloSandbox.lmsCatalogUrl": {
+        "apolloSandbox.catalogUrl": {
           "type": "string",
-          "default": "https://develop.uk.training.lkqacademy.com/en/courses/catalog/skills",
-          "description": "LMS page used to capture Bearer token (must trigger /graphql while logged in)."
+          "default": "",
+          "description": "App page used to capture Bearer token (must trigger /graphql while logged in)."
         },
         "apolloSandbox.graphqlUrl": {
           "type": "string",
-          "default": "https://develop.uk.training.lkqacademy.com/graphql",
+          "default": "http://localhost:4000/graphql",
           "description": "Apollo Server landing page / GraphQL endpoint URL."
         },
         "apolloSandbox.sandboxWaitMs": {

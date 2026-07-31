@@ -1,30 +1,13 @@
-/** Pretty-formatted GraphQL operation for Apollo Sandbox URL fill. */
-export const EXPORT_IMPORT_TEMPLATE_MUTATION = `mutation ExportImportTemplate(
-  $filterInput: ScheduledCourseFilterInput
-  $searchInput: SearchInput
-  $scheduledCourseIds: [String!]
-  $languageCode: String
-) {
-  exportScheduledCoursesUsingImportTemplate(
-    filterInput: $filterInput
-    searchInput: $searchInput
-    scheduledCourseIds: $scheduledCourseIds
-    languageCode: $languageCode
-  )
+/** Pretty-formatted default GraphQL operation for Apollo Sandbox URL fill. */
+export const DEFAULT_OPERATION = `query ExampleQuery($id: ID) {
+  __typename
 }`;
 
-export const EXPORT_IMPORT_TEMPLATE_VARIABLES = {
-  languageCode: "en",
-  filterInput: null,
-  searchInput: null,
-  scheduledCourseIds: null
+export const DEFAULT_VARIABLES = {
+  id: null
 } as const;
 
-export const EXPORT_IMPORT_TEMPLATE_VARIABLES_JSON = JSON.stringify(
-  EXPORT_IMPORT_TEMPLATE_VARIABLES,
-  null,
-  2
-);
+export const DEFAULT_VARIABLES_JSON = JSON.stringify(DEFAULT_VARIABLES, null, 2);
 
 export interface ApolloAuth {
   authorization: string;
@@ -36,8 +19,8 @@ export interface ApolloAuth {
 export function buildSandboxIframeUrl(
   graphqlEndpoint: string,
   auth: ApolloAuth,
-  operation = EXPORT_IMPORT_TEMPLATE_MUTATION,
-  variablesJson = EXPORT_IMPORT_TEMPLATE_VARIABLES_JSON
+  operation = DEFAULT_OPERATION,
+  variablesJson = DEFAULT_VARIABLES_JSON
 ): string {
   const headerObj: Record<string, string> = {
     Authorization: auth.authorization,
@@ -93,8 +76,6 @@ export function buildCaptureAuthScript(): string {
     if ((this.__url||'').includes('graphql')) save(this.__headers||{});
     return origSend.call(this,b);
   };
-  const btn = [...document.querySelectorAll('button,a')].find(el => /catalogue view|course calendar|home/i.test(el.textContent||''));
-  if (btn) btn.click();
   for (let i = 0; i < 30 && !window.__capturedAuth; i++) await new Promise(r => setTimeout(r, 500));
   return window.__capturedAuth || JSON.parse(sessionStorage.getItem('__apolloAuth')||'null');
 })()`;
@@ -105,7 +86,7 @@ export function buildFillSandboxScript(iframeUrl: string, waitMs: number): strin
   const iframeUrl = ${JSON.stringify(iframeUrl)};
   const waitMs = ${waitMs};
   const auth = JSON.parse(sessionStorage.getItem('__apolloAuth')||'null');
-  if (!auth?.authorization) return { err: 'No auth — run Capture LMS Auth first (logged into LMS in this browser tab).' };
+  if (!auth?.authorization) return { err: 'No auth — run Capture Auth first (logged into your app in this browser tab).' };
   const headerObj = {
     Authorization: auth.authorization,
     'x-company-id': auth['x-company-id'],
@@ -150,18 +131,17 @@ export function buildFillSandboxScript(iframeUrl: string, waitMs: number): strin
 })()`;
 }
 
-export function buildRunExportScript(): string {
-  const mutationOneLine = EXPORT_IMPORT_TEMPLATE_MUTATION.replace(/\s+/g, " ").trim();
+export function buildRunOperationScript(): string {
+  const operationOneLine = DEFAULT_OPERATION.replace(/\s+/g, " ").trim();
   return `(async () => {
   const auth = JSON.parse(sessionStorage.getItem('__apolloAuth')||'null');
   if (!auth?.authorization) return { err: 'no auth' };
-  const mutation = ${JSON.stringify(mutationOneLine)};
-  const variables = ${JSON.stringify(EXPORT_IMPORT_TEMPLATE_VARIABLES)};
+  const query = ${JSON.stringify(operationOneLine)};
+  const variables = ${JSON.stringify(DEFAULT_VARIABLES)};
   const headers = { 'Content-Type':'application/json', authorization: auth.authorization, 'x-company-id': auth['x-company-id'], 'x-role-assignment-id': auth['x-role-assignment-id'], 'x-language-id': auth['x-language-id'] };
   const t0 = Date.now();
-  const res = await fetch('/graphql', { method:'POST', credentials:'include', headers, body: JSON.stringify({ query: mutation, variables }) });
+  const res = await fetch('/graphql', { method:'POST', credentials:'include', headers, body: JSON.stringify({ query, variables }) });
   const json = await res.json();
-  const url = json?.data?.exportScheduledCoursesUsingImportTemplate;
-  return { status: res.status, ms: Date.now()-t0, hasUrl: !!url, urlPrefix: url?.slice?.(0,150), errors: json?.errors?.map(e=>e.message) };
+  return { status: res.status, ms: Date.now()-t0, data: json?.data, errors: json?.errors?.map(e=>e.message) };
 })()`;
 }

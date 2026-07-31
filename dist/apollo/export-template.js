@@ -1,32 +1,19 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.EXPORT_IMPORT_TEMPLATE_VARIABLES_JSON = exports.EXPORT_IMPORT_TEMPLATE_VARIABLES = exports.EXPORT_IMPORT_TEMPLATE_MUTATION = void 0;
+exports.DEFAULT_VARIABLES_JSON = exports.DEFAULT_VARIABLES = exports.DEFAULT_OPERATION = void 0;
 exports.buildSandboxIframeUrl = buildSandboxIframeUrl;
 exports.buildCaptureAuthScript = buildCaptureAuthScript;
 exports.buildFillSandboxScript = buildFillSandboxScript;
-exports.buildRunExportScript = buildRunExportScript;
-/** Pretty-formatted GraphQL operation for Apollo Sandbox URL fill. */
-exports.EXPORT_IMPORT_TEMPLATE_MUTATION = `mutation ExportImportTemplate(
-  $filterInput: ScheduledCourseFilterInput
-  $searchInput: SearchInput
-  $scheduledCourseIds: [String!]
-  $languageCode: String
-) {
-  exportScheduledCoursesUsingImportTemplate(
-    filterInput: $filterInput
-    searchInput: $searchInput
-    scheduledCourseIds: $scheduledCourseIds
-    languageCode: $languageCode
-  )
+exports.buildRunOperationScript = buildRunOperationScript;
+/** Pretty-formatted default GraphQL operation for Apollo Sandbox URL fill. */
+exports.DEFAULT_OPERATION = `query ExampleQuery($id: ID) {
+  __typename
 }`;
-exports.EXPORT_IMPORT_TEMPLATE_VARIABLES = {
-    languageCode: "en",
-    filterInput: null,
-    searchInput: null,
-    scheduledCourseIds: null
+exports.DEFAULT_VARIABLES = {
+    id: null
 };
-exports.EXPORT_IMPORT_TEMPLATE_VARIABLES_JSON = JSON.stringify(exports.EXPORT_IMPORT_TEMPLATE_VARIABLES, null, 2);
-function buildSandboxIframeUrl(graphqlEndpoint, auth, operation = exports.EXPORT_IMPORT_TEMPLATE_MUTATION, variablesJson = exports.EXPORT_IMPORT_TEMPLATE_VARIABLES_JSON) {
+exports.DEFAULT_VARIABLES_JSON = JSON.stringify(exports.DEFAULT_VARIABLES, null, 2);
+function buildSandboxIframeUrl(graphqlEndpoint, auth, operation = exports.DEFAULT_OPERATION, variablesJson = exports.DEFAULT_VARIABLES_JSON) {
     const headerObj = {
         Authorization: auth.authorization,
         "x-company-id": auth["x-company-id"] ?? "",
@@ -78,8 +65,6 @@ function buildCaptureAuthScript() {
     if ((this.__url||'').includes('graphql')) save(this.__headers||{});
     return origSend.call(this,b);
   };
-  const btn = [...document.querySelectorAll('button,a')].find(el => /catalogue view|course calendar|home/i.test(el.textContent||''));
-  if (btn) btn.click();
   for (let i = 0; i < 30 && !window.__capturedAuth; i++) await new Promise(r => setTimeout(r, 500));
   return window.__capturedAuth || JSON.parse(sessionStorage.getItem('__apolloAuth')||'null');
 })()`;
@@ -89,7 +74,7 @@ function buildFillSandboxScript(iframeUrl, waitMs) {
   const iframeUrl = ${JSON.stringify(iframeUrl)};
   const waitMs = ${waitMs};
   const auth = JSON.parse(sessionStorage.getItem('__apolloAuth')||'null');
-  if (!auth?.authorization) return { err: 'No auth — run Capture LMS Auth first (logged into LMS in this browser tab).' };
+  if (!auth?.authorization) return { err: 'No auth — run Capture Auth first (logged into your app in this browser tab).' };
   const headerObj = {
     Authorization: auth.authorization,
     'x-company-id': auth['x-company-id'],
@@ -133,19 +118,18 @@ function buildFillSandboxScript(iframeUrl, waitMs) {
   return { ok: true, headers: Object.keys(headerObj) };
 })()`;
 }
-function buildRunExportScript() {
-    const mutationOneLine = exports.EXPORT_IMPORT_TEMPLATE_MUTATION.replace(/\s+/g, " ").trim();
+function buildRunOperationScript() {
+    const operationOneLine = exports.DEFAULT_OPERATION.replace(/\s+/g, " ").trim();
     return `(async () => {
   const auth = JSON.parse(sessionStorage.getItem('__apolloAuth')||'null');
   if (!auth?.authorization) return { err: 'no auth' };
-  const mutation = ${JSON.stringify(mutationOneLine)};
-  const variables = ${JSON.stringify(exports.EXPORT_IMPORT_TEMPLATE_VARIABLES)};
+  const query = ${JSON.stringify(operationOneLine)};
+  const variables = ${JSON.stringify(exports.DEFAULT_VARIABLES)};
   const headers = { 'Content-Type':'application/json', authorization: auth.authorization, 'x-company-id': auth['x-company-id'], 'x-role-assignment-id': auth['x-role-assignment-id'], 'x-language-id': auth['x-language-id'] };
   const t0 = Date.now();
-  const res = await fetch('/graphql', { method:'POST', credentials:'include', headers, body: JSON.stringify({ query: mutation, variables }) });
+  const res = await fetch('/graphql', { method:'POST', credentials:'include', headers, body: JSON.stringify({ query, variables }) });
   const json = await res.json();
-  const url = json?.data?.exportScheduledCoursesUsingImportTemplate;
-  return { status: res.status, ms: Date.now()-t0, hasUrl: !!url, urlPrefix: url?.slice?.(0,150), errors: json?.errors?.map(e=>e.message) };
+  return { status: res.status, ms: Date.now()-t0, data: json?.data, errors: json?.errors?.map(e=>e.message) };
 })()`;
 }
 //# sourceMappingURL=export-template.js.map
