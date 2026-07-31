@@ -2,7 +2,7 @@
   "name": "cursor-apollo-sandbox",
   "displayName": "Cursor Apollo Sandbox",
   "description": "Auto-fill Apollo Server Sandbox in Cursor's embedded browser — GraphQL operation, variables, and auto-detected auth headers. Requires Cursor (not VS Code).",
-  "version": "0.3.0",
+  "version": "0.3.4",
   "publisher": "boobuh",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -46,27 +46,27 @@
     "commands": [
       {
         "command": "apolloSandbox.captureAuth",
-        "title": "Apollo Sandbox: Auto-detect Headers",
+        "title": "Auto-detect Headers",
         "category": "Apollo Sandbox"
       },
       {
         "command": "apolloSandbox.fillSandbox",
-        "title": "Apollo Sandbox: Fill Sandbox",
+        "title": "Fill Sandbox",
         "category": "Apollo Sandbox"
       },
       {
         "command": "apolloSandbox.runOperation",
-        "title": "Apollo Sandbox: Run Operation (parent fetch)",
+        "title": "Run Operation (parent fetch)",
         "category": "Apollo Sandbox"
       },
       {
         "command": "apolloSandbox.setupSandbox",
-        "title": "Apollo Sandbox: Setup (auto-detect + fill)",
+        "title": "Setup (auto-detect + fill)",
         "category": "Apollo Sandbox"
       },
       {
         "command": "apolloSandbox.openGraphql",
-        "title": "Apollo Sandbox: Open GraphQL Endpoint",
+        "title": "Open GraphQL Endpoint",
         "category": "Apollo Sandbox"
       }
     ],
@@ -76,7 +76,12 @@
         "apolloSandbox.graphqlUrl": {
           "type": "string",
           "default": "http://localhost:4000/graphql",
-          "description": "Apollo Server Sandbox / GraphQL endpoint URL (also used for fill and run)."
+          "description": "Default Apollo Server Sandbox / GraphQL endpoint when no browser tab matches."
+        },
+        "apolloSandbox.graphqlUrlFromBrowserTab": {
+          "type": "boolean",
+          "default": false,
+          "description": "When enabled, use the GraphQL URL from the active Cursor browser tab (e.g. develop/staging /graphql) instead of graphqlUrl. Falls back to graphqlUrl if no matching tab is open."
         },
         "apolloSandbox.authCaptureUrl": {
           "type": "string",
@@ -119,7 +124,8 @@
     "prepackage": "npm run build",
     "package": "vsce package --no-dependencies",
     "publish:marketplace": "vsce publish --no-dependencies",
-    "lint": "tsc -p . --noEmit"
+    "lint": "tsc -p . --noEmit",
+    "test": "npm run build && node --test test/*.test.mjs"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

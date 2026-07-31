@@ -43,8 +43,9 @@ See `scripts/publish.sh` for details.
 
 ## Quick start
 
-1. Open your app in the Cursor browser (logged in) and/or the GraphQL Sandbox URL.
-2. Run **Apollo Sandbox: Setup (auto-detect + fill)**.
+1. Open your GraphQL endpoint in the Cursor browser (local or remote `/graphql`), or set `apolloSandbox.graphqlUrl`.
+2. Optional: enable **`apolloSandbox.graphqlUrlFromBrowserTab`** to pick the endpoint from whichever GraphQL tab you have open (falls back to `graphqlUrl`).
+3. Run **Apollo Sandbox: Setup (auto-detect + fill)**.
 
 The extension discovers headers automatically — no manual copy/paste.
 
@@ -61,27 +62,28 @@ Public cookie-only APIs: probe succeeds with `{}` headers. Bearer APIs: token pi
 
 ## Commands
 
-| Command | What it does |
-| -------- | ------------- |
-| **Setup (auto-detect + fill)** | Detect headers → fill Sandbox |
-| **Auto-detect Headers** | Run detection only (shows sources: traffic, storage, probe) |
-| **Fill Sandbox** | Auto-detect → reload iframe with operation + variables + headers |
-| **Run Operation (parent fetch)** | Auto-detect → POST configured operation |
-| **Open GraphQL Endpoint** | Open `graphqlUrl` in a browser tab |
+| Command                          | What it does                                                     |
+| -------------------------------- | ---------------------------------------------------------------- |
+| **Setup (auto-detect + fill)**   | Detect headers → fill Sandbox                                    |
+| **Auto-detect Headers**          | Run detection only (shows sources: traffic, storage, probe)      |
+| **Fill Sandbox**                 | Auto-detect → reload iframe with operation + variables + headers |
+| **Run Operation (parent fetch)** | Auto-detect → POST configured operation                          |
+| **Open GraphQL Endpoint**        | Open `graphqlUrl` in a browser tab                               |
 
 Command Palette → **Apollo Sandbox**.
 
 ## Settings
 
-| Key | Default | Description |
-| ----- | -------- | ------------- |
-| `apolloSandbox.graphqlUrl` | `http://localhost:4000/graphql` | Apollo Server Sandbox / GraphQL endpoint |
-| `apolloSandbox.authCaptureUrl` | *(empty)* | Extra page to scan (SPA dashboard); same host tabs are scanned automatically |
-| `apolloSandbox.graphqlUrlMatch` | *(auto)* | URL substring for GraphQL traffic |
-| `apolloSandbox.defaultOperation` | `query ExampleQuery { __typename }` | Multi-line operation |
-| `apolloSandbox.defaultVariables` | `{}` | JSON variables |
-| `apolloSandbox.headerDetectMs` | `6000` | Listen + probe timeout (ms) |
-| `apolloSandbox.sandboxWaitMs` | `9000` | Wait after iframe reload (ms) |
+| Key                              | Default                             | Description                                                                  |
+| -------------------------------- | ----------------------------------- | ---------------------------------------------------------------------------- |
+| `apolloSandbox.graphqlUrl`       | `http://localhost:4000/graphql`     | Default GraphQL endpoint when no browser tab matches                         |
+| `apolloSandbox.graphqlUrlFromBrowserTab` | `false`                     | Use `/graphql` URL from the active Cursor browser tab                        |
+| `apolloSandbox.authCaptureUrl`   | _(empty)_                           | Extra page to scan (SPA dashboard); same host tabs are scanned automatically |
+| `apolloSandbox.graphqlUrlMatch`  | _(auto)_                            | URL substring for GraphQL traffic                                            |
+| `apolloSandbox.defaultOperation` | `query ExampleQuery { __typename }` | Multi-line operation                                                         |
+| `apolloSandbox.defaultVariables` | `{}`                                | JSON variables                                                               |
+| `apolloSandbox.headerDetectMs`   | `6000`                              | Listen + probe timeout (ms)                                                  |
+| `apolloSandbox.sandboxWaitMs`    | `9000`                              | Wait after iframe reload (ms)                                                |
 
 ## How it works
 
@@ -90,6 +92,12 @@ Apollo Sandbox runs in a cross-origin iframe. This extension:
 1. **Auto-detects** headers from live traffic, browser storage, and endpoint probes
 2. **Rebuilds** the embed URL with Apollo's `document`, `variables`, and `headers` params
 3. **Relays** Sandbox Run via `postMessage` on the parent page (`credentials: include` for cookies)
+
+### Cursor browser safety
+
+Cursor browser tabs can be **agent-owned**; passing a tab `viewId` into `executeJavaScript` causes
+`Browser view not found`. This extension **never** does that — it uses `selectTab` + active-view
+commands only, with multi-step fallbacks (match URL → select → navigate → new tab).
 
 ## License
 

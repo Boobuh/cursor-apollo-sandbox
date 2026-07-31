@@ -11,12 +11,20 @@ export interface HeaderDetectionResult extends CapturedGraphqlAuth {
   sources: string[];
 }
 
+export type GraphqlUrlSource = "settings" | "browserTab";
+
 export interface SandboxConfig {
   authCaptureUrl: string;
   graphqlUrl: string;
+  /** When true, use GraphQL URL from an open Cursor browser tab (falls back to graphqlUrl). */
+  graphqlUrlFromBrowserTab: boolean;
   graphqlUrlMatch: string;
   sandboxWaitMs: number;
   headerDetectMs: number;
   defaultOperation: string;
   defaultVariablesJson: string;
+}
+
+export interface ResolvedSandboxConfig extends SandboxConfig {
+  graphqlUrlSource: GraphqlUrlSource;
 }

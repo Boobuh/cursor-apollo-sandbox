@@ -33,13 +33,18 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.deriveGraphqlUrlMatch = void 0;
 exports.activate = activate;
 exports.deactivate = deactivate;
 const vscode = __importStar(require("vscode"));
 const browser_1 = require("./browser");
+const browser_types_1 = require("./browser.types");
+const browser_utils_1 = require("./browser.utils");
+const graphql_url_1 = require("./apollo/graphql-url");
 const header_detection_1 = require("./apollo/header-detection");
 const sandbox_1 = require("./apollo/sandbox");
-function getConfig() {
+Object.defineProperty(exports, "deriveGraphqlUrlMatch", { enumerable: true, get: function () { return sandbox_1.deriveGraphqlUrlMatch; } });
+function getBaseConfig() {
     const cfg = vscode.workspace.getConfiguration("apolloSandbox");
     const graphqlUrl = cfg.get("graphqlUrl") ?? "http://localhost:4000/graphql";
     const defaultOperation = cfg.get("defaultOperation")?.trim() || sandbox_1.FALLBACK_OPERATION;
@@ -48,13 +53,16 @@ function getConfig() {
     return {
         authCaptureUrl: cfg.get("authCaptureUrl") ?? "",
         graphqlUrl,
-        graphqlUrlMatch: cfg.get("graphqlUrlMatch")?.trim() ||
-            (0, sandbox_1.deriveGraphqlUrlMatch)(graphqlUrl),
+        graphqlUrlFromBrowserTab: cfg.get("graphqlUrlFromBrowserTab") ?? false,
+        graphqlUrlMatch: cfg.get("graphqlUrlMatch")?.trim() ?? "",
         sandboxWaitMs: cfg.get("sandboxWaitMs") ?? 9000,
         headerDetectMs: cfg.get("headerDetectMs") ?? 6000,
         defaultOperation,
         defaultVariablesJson: defaultVariablesRaw
     };
+}
+async function getResolvedConfig(browser) {
+    return (0, graphql_url_1.resolveSandboxConfig)(browser, getBaseConfig());
 }
 function collectTargetHosts(config) {
     const hosts = new Set();
@@ -70,12 +78,27 @@ function collectTargetHosts(config) {
     }
     return hosts;
 }
-async function autoDetectHeaders(browser) {
-    const config = getConfig();
+function endpointHint(config) {
+    if (config.graphqlUrlSource !== "browserTab")
+        return "";
+    return ` — endpoint from browser tab (${config.graphqlUrl})`;
+}
+async function runDetectOnTab(browser, detectScript, tabViewId, targetUrl) {
+    try {
+        return await browser.runInTab(detectScript, {
+            hintViewId: tabViewId,
+            targetUrl
+        });
+    }
+    catch {
+        return undefined;
+    }
+}
+async function autoDetectHeaders(browser, config) {
     const detectScript = (0, header_detection_1.buildAutoDetectHeadersScript)(config.graphqlUrl, config.graphqlUrlMatch, config.headerDetectMs);
     const hosts = collectTargetHosts(config);
     const parts = [];
-    const visitedTabs = new Set();
+    const visitedHosts = new Set();
     for (const tab of await browser.listTabs()) {
         if (!tab.viewId || !tab.url)
             continue;
@@ -86,30 +109,25 @@ async function autoDetectHeaders(browser) {
         catch {
             continue;
         }
-        if (!hosts.has(host))
+        if (!hosts.has(host) || visitedHosts.has(host))
             continue;
-        visitedTabs.add(tab.viewId);
-        const result = await browser.executeJavaScript(detectScript, tab.viewId);
+        visitedHosts.add(host);
+        const result = await runDetectOnTab(browser, detectScript, tab.viewId, tab.url);
         if (result)
             parts.push(result);
     }
-    const urlsToOpen = [
-        config.authCaptureUrl.trim(),
-        config.graphqlUrl
-    ].filter(Boolean);
-    for (const url of urlsToOpen) {
-        const tabId = await (0, browser_1.ensureBrowserTab)(browser, url);
-        if (visitedTabs.has(tabId))
-            continue;
-        visitedTabs.add(tabId);
+    for (const url of [config.authCaptureUrl.trim(), config.graphqlUrl].filter(Boolean)) {
+        await browser.ensureBrowserTab(url);
         await browser.waitForLoad(1500);
-        const result = await browser.executeJavaScript(detectScript, tabId);
+        const result = await browser.runInTab(detectScript, { targetUrl: url });
         if (result)
             parts.push(result);
     }
     const merged = (0, header_detection_1.mergeDetectedHeaders)(...parts);
-    const gqlTab = await (0, browser_1.ensureBrowserTab)(browser, config.graphqlUrl);
-    await browser.executeJavaScript((0, header_detection_1.buildPersistHeadersScript)(merged.headers, merged), gqlTab);
+    await browser.ensureBrowserTab(config.graphqlUrl);
+    await browser.runInTab((0, header_detection_1.buildPersistHeadersScript)(merged.headers, merged), {
+        targetUrl: config.graphqlUrl
+    });
     if (!merged.probeOk &&
         !Object.keys(merged.headers).length &&
         !merged.graphqlSeen) {
@@ -117,20 +135,20 @@ async function autoDetectHeaders(browser) {
     }
     return merged;
 }
-async function fillSandbox(browser, auth, viewId) {
-    const config = getConfig();
-    const tabId = await (0, browser_1.ensureBrowserTab)(browser, config.graphqlUrl, viewId);
+async function fillSandbox(browser, config, auth) {
+    await browser.ensureBrowserTab(config.graphqlUrl);
     const iframeUrl = (0, sandbox_1.buildSandboxIframeUrl)(config.graphqlUrl, auth, config.defaultOperation, config.defaultVariablesJson);
-    const result = await browser.executeJavaScript((0, sandbox_1.buildFillSandboxScript)(iframeUrl, config.sandboxWaitMs), tabId);
+    const result = await browser.runInTab((0, sandbox_1.buildFillSandboxScript)(iframeUrl, config.sandboxWaitMs), {
+        targetUrl: config.graphqlUrl
+    });
     if (result?.err) {
         throw new Error(result.err);
     }
     return result?.headerKeys ?? Object.keys(auth.headers);
 }
-async function runOperation(browser, viewId) {
-    const config = getConfig();
-    const tabId = await (0, browser_1.ensureBrowserTab)(browser, config.graphqlUrl, viewId);
-    const result = await browser.executeJavaScript((0, sandbox_1.buildRunOperationScript)(config.graphqlUrl, config.defaultOperation, config.defaultVariablesJson), tabId);
+async function runOperation(browser, config) {
+    await browser.ensureBrowserTab(config.graphqlUrl);
+    const result = await browser.runInTab((0, sandbox_1.buildRunOperationScript)(config.graphqlUrl, config.defaultOperation, config.defaultVariablesJson), { targetUrl: config.graphqlUrl });
     if (!result) {
         throw new Error("No response from browser");
     }
@@ -155,49 +173,63 @@ function headerSummary(auth) {
     }
     return `Auto-detected ${keys.length} header(s): ${keys.join(", ")}${sources}${verified}.`;
 }
+async function runApolloCommand(title, fn) {
+    try {
+        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title }, fn);
+    }
+    catch (err) {
+        if ((0, browser_utils_1.isBrowserViewError)(err)) {
+            vscode.window.showErrorMessage(`Apollo Sandbox: Cursor browser tab issue. ${browser_types_1.BROWSER_TAB_HELP}`);
+            return;
+        }
+        throw err;
+    }
+}
 function activate(context) {
     const browser = new browser_1.CursorBrowser(vscode.commands);
     context.subscriptions.push(vscode.commands.registerCommand("apolloSandbox.openGraphql", async () => {
-        const { graphqlUrl } = getConfig();
-        await (0, browser_1.ensureBrowserTab)(browser, graphqlUrl);
-        vscode.window.showInformationMessage(`Opened ${graphqlUrl}`);
+        try {
+            const config = await getResolvedConfig(browser);
+            await browser.ensureBrowserTab(config.graphqlUrl);
+            vscode.window.showInformationMessage(`Opened ${config.graphqlUrl}${endpointHint(config)}`);
+        }
+        catch (err) {
+            if ((0, browser_utils_1.isBrowserViewError)(err)) {
+                vscode.window.showErrorMessage(`Apollo Sandbox: Cursor browser tab issue. ${browser_types_1.BROWSER_TAB_HELP}`);
+            }
+            else {
+                throw err;
+            }
+        }
     }), vscode.commands.registerCommand("apolloSandbox.captureAuth", async () => {
-        await vscode.window.withProgress({
-            location: vscode.ProgressLocation.Notification,
-            title: "Apollo Sandbox: auto-detecting headers…"
-        }, async () => {
-            const auth = await autoDetectHeaders(browser);
-            vscode.window.showInformationMessage(headerSummary(auth));
+        await runApolloCommand("Apollo Sandbox: auto-detecting headers…", async () => {
+            const config = await getResolvedConfig(browser);
+            const auth = await autoDetectHeaders(browser, config);
+            vscode.window.showInformationMessage(headerSummary(auth) + endpointHint(config));
         });
     }), vscode.commands.registerCommand("apolloSandbox.fillSandbox", async () => {
-        await vscode.window.withProgress({
-            location: vscode.ProgressLocation.Notification,
-            title: "Apollo Sandbox: detecting headers and filling…"
-        }, async () => {
-            const auth = await autoDetectHeaders(browser);
-            await fillSandbox(browser, auth);
-            vscode.window.showInformationMessage(`Sandbox filled. ${headerSummary(auth)}`);
+        await runApolloCommand("Apollo Sandbox: detecting headers and filling…", async () => {
+            const config = await getResolvedConfig(browser);
+            const auth = await autoDetectHeaders(browser, config);
+            await fillSandbox(browser, config, auth);
+            vscode.window.showInformationMessage(`Sandbox filled. ${headerSummary(auth)}${endpointHint(config)}`);
         });
     }), vscode.commands.registerCommand("apolloSandbox.runOperation", async () => {
-        await vscode.window.withProgress({
-            location: vscode.ProgressLocation.Notification,
-            title: "Apollo Sandbox: detecting headers and running…"
-        }, async () => {
-            await autoDetectHeaders(browser);
-            const { data, ms } = await runOperation(browser);
+        await runApolloCommand("Apollo Sandbox: detecting headers and running…", async () => {
+            const config = await getResolvedConfig(browser);
+            await autoDetectHeaders(browser, config);
+            const { data, ms } = await runOperation(browser, config);
             const preview = data
                 ? JSON.stringify(data).slice(0, 120)
                 : "see Response panel";
-            vscode.window.showInformationMessage(`OK (${ms}ms): ${preview}`);
+            vscode.window.showInformationMessage(`OK (${ms}ms): ${preview}${endpointHint(config)}`);
         });
     }), vscode.commands.registerCommand("apolloSandbox.setupSandbox", async () => {
-        await vscode.window.withProgress({
-            location: vscode.ProgressLocation.Notification,
-            title: "Apollo Sandbox: auto-detect, fill…"
-        }, async () => {
-            const auth = await autoDetectHeaders(browser);
-            await fillSandbox(browser, auth);
-            vscode.window.showInformationMessage(`Apollo Sandbox ready. ${headerSummary(auth)}`);
+        await runApolloCommand("Apollo Sandbox: auto-detect, fill…", async () => {
+            const config = await getResolvedConfig(browser);
+            const auth = await autoDetectHeaders(browser, config);
+            await fillSandbox(browser, config, auth);
+            vscode.window.showInformationMessage(`Apollo Sandbox ready. ${headerSummary(auth)}${endpointHint(config)}`);
         });
     }), vscode.commands.registerCommand("apolloSandbox.runExport", async () => {
         await vscode.commands.executeCommand("apolloSandbox.runOperation");

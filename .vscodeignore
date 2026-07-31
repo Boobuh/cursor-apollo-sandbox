@@ -10,4 +10,7 @@ tsconfig.json
 .gitignore
 node_modules/**
 *.vsix
-push-to-github.sh
+test/**
+media/publisher-logo*.png
+media/icon-small.png
+media/icon-tiny.png
