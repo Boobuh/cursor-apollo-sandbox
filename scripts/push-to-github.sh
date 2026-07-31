@@ -10,4 +10,4 @@ if ! gh auth status >/dev/null 2>&1; then
 fi
 
 gh repo create cursor-apollo-sandbox --public --source=. --remote=origin --push
-echo "Done: https://github.com/$(gh api user -q .login)/cursor-apollo-sandbox"
+echo "Done: https://github.com/Boobuh/cursor-apollo-sandbox"

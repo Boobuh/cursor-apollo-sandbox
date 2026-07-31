@@ -12,7 +12,7 @@ Built from the workflow we verified for LKQ Academy (`exportScheduledCoursesUsin
 ## Install (from source)
 
 ```bash
-git clone https://github.com/Oleh-Helei/cursor-apollo-sandbox.git
+git clone https://github.com/Boobuh/cursor-apollo-sandbox.git
 cd cursor-apollo-sandbox
 npm install
 npm run build
