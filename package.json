@@ -1,14 +1,33 @@
 {
   "name": "cursor-apollo-sandbox",
   "displayName": "Cursor Apollo Sandbox",
-  "description": "Fill Apollo Server Sandbox in Cursor for any GraphQL project — operation, variables, headers, and authenticated runs.",
+  "description": "Auto-fill Apollo Server Sandbox in Cursor's embedded browser — GraphQL operation, variables, and auto-detected auth headers. Requires Cursor (not VS Code).",
   "version": "0.3.0",
-  "publisher": "oleh-helei",
+  "publisher": "boobuh",
   "license": "MIT",
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#1e1e2e",
+    "theme": "dark"
+  },
+  "homepage": "https://github.com/Boobuh/cursor-apollo-sandbox#readme",
+  "bugs": {
+    "url": "https://github.com/Boobuh/cursor-apollo-sandbox/issues"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/Boobuh/cursor-apollo-sandbox.git"
   },
+  "keywords": [
+    "graphql",
+    "apollo",
+    "apollo-server",
+    "sandbox",
+    "cursor",
+    "api",
+    "headers",
+    "authentication"
+  ],
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -97,12 +116,15 @@
   "scripts": {
     "build": "tsc -p .",
     "watch": "tsc -watch -p .",
-    "package": "vsce package",
+    "prepackage": "npm run build",
+    "package": "vsce package --no-dependencies",
+    "publish:marketplace": "vsce publish --no-dependencies",
     "lint": "tsc -p . --noEmit"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
     "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.2.1",
     "typescript": "^5.5.0"
   }
 }

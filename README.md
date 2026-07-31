@@ -2,13 +2,17 @@
 
 Fill **Apollo Server Sandbox** inside [Cursor](https://cursor.com)'s embedded browser for **any Apollo GraphQL project** — formatted operation, pretty JSON variables, and **auto-detected request headers**. No Chrome, no CDP patches, no restart.
 
-## Requirements
+> **Cursor only** — uses `cursor.browserView.*` APIs. Does not run in VS Code.
 
-- **Cursor** with embedded Browser tab (`cursor.browserView.*` commands)
-- An Apollo Server GraphQL endpoint (local or remote)
-- Optional: a logged-in frontend tab on the same host (improves header detection)
+## Install from Marketplace
 
-## Install
+Search **Cursor Apollo Sandbox** in Cursor Extensions, or:
+
+```
+ext install boobuh.cursor-apollo-sandbox
+```
+
+## Install from source
 
 ```bash
 git clone https://github.com/Boobuh/cursor-apollo-sandbox.git
@@ -19,6 +23,23 @@ ln -s "$(pwd)" ~/.cursor/extensions/cursor-apollo-sandbox
 ```
 
 Reload Cursor. Set `apolloSandbox.graphqlUrl` and your default operation.
+
+## Publish (maintainers)
+
+```bash
+# One-time: create publisher "boobuh" at marketplace.visualstudio.com
+npx @vscode/vsce login boobuh
+npm run package              # creates .vsix
+VSCE_PAT=*** npm run publish:marketplace
+```
+
+See `scripts/publish.sh` for details.
+
+## Requirements
+
+- **Cursor** with embedded Browser tab (`cursor.browserView.*` commands)
+- An Apollo Server GraphQL endpoint (local or remote)
+- Optional: a logged-in frontend tab on the same host (improves header detection)
 
 ## Quick start
 

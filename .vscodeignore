@@ -1,8 +1,13 @@
 .vscode/**
 .vscode-test/**
+.git/**
+.github/**
+scripts/**
 src/**
-.gitignore
-tsconfig.json
-**/*.map
 **/*.ts
+**/*.map
+tsconfig.json
+.gitignore
 node_modules/**
+*.vsix
+push-to-github.sh
