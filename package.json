@@ -1,0 +1,84 @@
+{
+  "name": "cursor-apollo-sandbox",
+  "displayName": "Cursor Apollo Sandbox",
+  "description": "Fill Apollo Server Sandbox in Cursor's embedded browser — operation, variables, headers, and GraphQL export.",
+  "version": "0.1.0",
+  "publisher": "oleh-helei",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Oleh-Helei/cursor-apollo-sandbox.git"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": [
+    "onCommand:apolloSandbox.captureAuth",
+    "onCommand:apolloSandbox.fillSandbox",
+    "onCommand:apolloSandbox.runExport",
+    "onCommand:apolloSandbox.setupExportTemplate",
+    "onCommand:apolloSandbox.openGraphql"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "apolloSandbox.captureAuth",
+        "title": "Apollo Sandbox: Capture LMS Auth",
+        "category": "Apollo Sandbox"
+      },
+      {
+        "command": "apolloSandbox.fillSandbox",
+        "title": "Apollo Sandbox: Fill Export Template",
+        "category": "Apollo Sandbox"
+      },
+      {
+        "command": "apolloSandbox.runExport",
+        "title": "Apollo Sandbox: Run Export (parent fetch)",
+        "category": "Apollo Sandbox"
+      },
+      {
+        "command": "apolloSandbox.setupExportTemplate",
+        "title": "Apollo Sandbox: Setup Export Template (auth + fill)",
+        "category": "Apollo Sandbox"
+      },
+      {
+        "command": "apolloSandbox.openGraphql",
+        "title": "Apollo Sandbox: Open GraphQL Endpoint",
+        "category": "Apollo Sandbox"
+      }
+    ],
+    "configuration": {
+      "title": "Apollo Sandbox",
+      "properties": {
+        "apolloSandbox.lmsCatalogUrl": {
+          "type": "string",
+          "default": "https://develop.uk.training.lkqacademy.com/en/courses/catalog/skills",
+          "description": "LMS page used to capture Bearer token (must trigger /graphql while logged in)."
+        },
+        "apolloSandbox.graphqlUrl": {
+          "type": "string",
+          "default": "https://develop.uk.training.lkqacademy.com/graphql",
+          "description": "Apollo Server landing page / GraphQL endpoint URL."
+        },
+        "apolloSandbox.sandboxWaitMs": {
+          "type": "number",
+          "default": 9000,
+          "description": "Milliseconds to wait after reloading the Sandbox iframe."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "watch": "tsc -watch -p .",
+    "package": "vsce package",
+    "lint": "tsc -p . --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.5.0"
+  }
+}
