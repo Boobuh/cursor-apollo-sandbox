@@ -1,11 +1,22 @@
-import * as fs from "fs";
-import * as path from "path";
+import fs from "fs";
+import path from "path";
 import type { ExtensionHostApi } from "../extension.types";
 import {
   runCursorBrowserSelfTests,
   summarizeSelfTestResults,
   type SelfTestResult
 } from "./self-test";
+
+export type E2ESelfTestRunner = typeof runCursorBrowserSelfTests;
+
+let e2eSelfTestRunner: E2ESelfTestRunner = runCursorBrowserSelfTests;
+
+/** Test-only override for E2E runner error handling coverage. */
+export function __setE2ESelfTestRunnerForTests(
+  runner: E2ESelfTestRunner | null
+): void {
+  e2eSelfTestRunner = runner ?? runCursorBrowserSelfTests;
+}
 
 export interface E2ETriggerConfig {
   resultsPath: string;
@@ -64,7 +75,7 @@ export async function maybeRunE2EOnActivation(
 
   let results: SelfTestResult[] = [];
   try {
-    results = await runCursorBrowserSelfTests(selfTestCommands(api));
+    results = await e2eSelfTestRunner(selfTestCommands(api));
   } catch (err) {
     results = [
       {

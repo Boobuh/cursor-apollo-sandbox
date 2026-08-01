@@ -90,6 +90,48 @@ describe("headerSummary", () => {
 });
 
 describe("captureSummary", () => {
+  it("describes traffic capture without probe verification", () => {
+    assert.match(
+      headerSummary({
+        headers: { Authorization: "Bearer x" },
+        probeOk: false,
+        sources: ["traffic"]
+      }),
+      /Captured 1 header\(s\) from GraphQL network traffic/
+    );
+    assert.doesNotMatch(
+      headerSummary({
+        headers: { Authorization: "Bearer x" },
+        probeOk: false,
+        sources: ["traffic"]
+      }),
+      /probe OK/
+    );
+  });
+
+  it("captureSummary omits variables hint for empty object", () => {
+    assert.match(
+      captureSummary({
+        headers: { Authorization: "Bearer x" },
+        operation: "query Employees { items { id name extra field names here } }",
+        variablesJson: "{}",
+        sources: ["traffic"],
+        probeOk: true
+      }),
+      /Operation from traffic:/
+    );
+    assert.doesNotMatch(
+      captureSummary({
+        headers: { Authorization: "Bearer x" },
+        operation: "query Employees { items { id name extra field names here } }",
+        variablesJson: "{}",
+        sources: ["traffic"],
+        probeOk: true
+      }),
+      /\+ variables/
+    );
+  });
+
   it("includes operation preview when captured from traffic", () => {
     assert.match(
       captureSummary({

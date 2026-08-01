@@ -84,6 +84,25 @@ async function runDetectOnTab(
   }
 }
 
+async function finalizeDetectedAuth(
+  browser: CursorBrowser,
+  config: ResolvedSandboxConfig,
+  merged: CapturedGraphqlAuth
+): Promise<CapturedGraphqlAuth> {
+  await browser.runInTab(buildPersistHeadersScript(merged), {
+    targetUrl: config.graphqlUrl,
+    navigateToTargetUrl: true
+  });
+
+  if (!hasRequiredGraphqlAuthHeaders(merged.headers)) {
+    merged.sources = [
+      ...new Set([...(merged.sources ?? []), "traffic-partial-headers"])
+    ];
+  }
+
+  return merged;
+}
+
 function pickBestTrafficPart(
   parts: HeaderDetectionResult[]
 ): HeaderDetectionResult | undefined {
@@ -111,9 +130,6 @@ export function resolveSandboxDocument(
   const captured = auth.operation?.trim();
   if (captured && !isTrivialProbeQuery(captured)) {
     return captured;
-  }
-  if (hasRealGraphqlOperation(auth)) {
-    return auth.operation!.trim();
   }
   return config.defaultOperation;
 }
@@ -156,6 +172,27 @@ async function readCachedFromAppTabs(
 
 const OPERATION_SEARCH_PASSES = 3;
 const OPERATION_SEARCH_PASS_DELAY_MS = 700;
+
+/** @internal test hook for detect failure branches */
+export function throwDetectFailure(parts: HeaderDetectionResult[]): never {
+  const merged = mergeTrafficCapture(...parts);
+
+  if (!Object.keys(merged.headers).length) {
+    throw new Error(
+      "Could not capture headers from GraphQL network traffic. Focus a logged-in tab with at least one graphql POST in Network, then retry Setup."
+    );
+  }
+
+  if (!hasRealGraphqlOperation(merged)) {
+    throw new Error(
+      "Could not capture a GraphQL operation from network traffic. Focus a logged-in app tab, trigger an action that sends a graphql POST (not only __typename), then retry Setup."
+    );
+  }
+
+  throw new Error(
+    "Could not finalize captured GraphQL auth. Retry Setup with a logged-in app tab open."
+  );
+}
 
 export async function autoDetectHeaders(
   browser: CursorBrowser,
@@ -225,18 +262,7 @@ export async function autoDetectHeaders(
       hasRealGraphqlOperation(merged) &&
       Object.keys(merged.headers).length > 0
     ) {
-      await browser.runInTab(buildPersistHeadersScript(merged), {
-        targetUrl: config.graphqlUrl,
-        navigateToTargetUrl: true
-      });
-
-      if (!hasRequiredGraphqlAuthHeaders(merged.headers)) {
-        merged.sources = [
-          ...new Set([...(merged.sources ?? []), "traffic-partial-headers"])
-        ];
-      }
-
-      return merged;
+      return finalizeDetectedAuth(browser, config, merged);
     }
 
     if (pass < OPERATION_SEARCH_PASSES - 1) {
@@ -244,32 +270,7 @@ export async function autoDetectHeaders(
     }
   }
 
-  const merged = mergeTrafficCapture(...parts);
-
-  if (!Object.keys(merged.headers).length) {
-    throw new Error(
-      "Could not capture headers from GraphQL network traffic. Focus a logged-in tab with at least one graphql POST in Network, then retry Setup."
-    );
-  }
-
-  if (!hasRealGraphqlOperation(merged)) {
-    throw new Error(
-      "Could not capture a GraphQL operation from network traffic. Focus a logged-in app tab, trigger an action that sends a graphql POST (not only __typename), then retry Setup."
-    );
-  }
-
-  await browser.runInTab(buildPersistHeadersScript(merged), {
-    targetUrl: config.graphqlUrl,
-    navigateToTargetUrl: true
-  });
-
-  if (!hasRequiredGraphqlAuthHeaders(merged.headers)) {
-    merged.sources = [
-      ...new Set([...(merged.sources ?? []), "traffic-partial-headers"])
-    ];
-  }
-
-  return merged;
+  throwDetectFailure(parts);
 }
 
 export async function fillSandbox(

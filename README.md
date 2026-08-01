@@ -1,6 +1,18 @@
-# Cursor Apollo Sandbox
+<p align="center">
+  <img src="media/icon.png" alt="Cursor Apollo Sandbox" width="128" />
+</p>
 
-Fill **Apollo Server Sandbox** inside [Cursor](https://cursor.com)'s embedded browser for **any Apollo GraphQL project** — formatted operation, pretty JSON variables, and **auto-detected request headers**. No Chrome, no CDP patches, no restart.
+<h1 align="center">Cursor Apollo Sandbox</h1>
+
+<p align="center">
+  Fill <strong>Apollo Server Sandbox</strong> in Cursor's embedded browser — operation, variables, and auto-detected auth headers.
+</p>
+
+<p align="center">
+  <a href="https://github.com/Boobuh/cursor-apollo-sandbox"><img src="https://img.shields.io/github/stars/Boobuh/cursor-apollo-sandbox?style=social" alt="GitHub stars" /></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=boobuh.cursor-apollo-sandbox"><img src="https://img.shields.io/visual-studio-marketplace/v/boobuh.cursor-apollo-sandbox?label=Marketplace&color=1e1e2e" alt="Marketplace version" /></a>
+  <a href="https://github.com/Boobuh/cursor-apollo-sandbox/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Boobuh/cursor-apollo-sandbox" alt="License" /></a>
+</p>
 
 > **Cursor only** — uses `cursor.browserView.*` APIs. Does not run in VS Code.
 

@@ -75,6 +75,21 @@ describe("resolveSandboxConfig", () => {
     assert.equal(resolved.graphqlUrlMatch, "/graphql");
   });
 
+  it("uses active graphql tab when last interacted tab is not graphql", async () => {
+    const resolved = await resolveSandboxConfig(
+      mockBrowser({
+        tabs: [
+          { viewId: "a", url: "https://dev.com/dashboard" },
+          { viewId: "b", url: "https://active.com/graphql" }
+        ],
+        activeViewId: "b",
+        lastInteractedViewId: "a"
+      }),
+      { ...baseConfig, graphqlUrlFromBrowserTab: true }
+    );
+    assert.equal(resolved.graphqlUrl, "https://active.com/graphql");
+  });
+
   it("prefers last-interacted graphql tab when enabled", async () => {
     const resolved = await resolveSandboxConfig(
       mockBrowser({
