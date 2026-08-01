@@ -1,0 +1,12 @@
+{
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "apolloSandbox.graphqlUrl": "http://localhost:3001/graphql",
+    "apolloSandbox.sandboxWaitMs": 1000,
+    "apolloSandbox.headerDetectMs": 1000
+  }
+}

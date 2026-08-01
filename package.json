@@ -35,6 +35,7 @@
     "Other"
   ],
   "activationEvents": [
+    "onStartupFinished",
     "onCommand:apolloSandbox.captureAuth",
     "onCommand:apolloSandbox.fillSandbox",
     "onCommand:apolloSandbox.runOperation",
@@ -67,6 +68,11 @@
       {
         "command": "apolloSandbox.openGraphql",
         "title": "Open GraphQL Endpoint",
+        "category": "Apollo Sandbox"
+      },
+      {
+        "command": "apolloSandbox.runSelfTest",
+        "title": "Run Self Test (E2E)",
         "category": "Apollo Sandbox"
       }
     ],
@@ -125,7 +131,8 @@
     "package": "vsce package --no-dependencies",
     "publish:marketplace": "vsce publish --no-dependencies",
     "lint": "tsc -p . --noEmit",
-    "test": "npm run build && node --test test/*.test.mjs"
+    "test": "npm run build && node --test test/*.test.mjs",
+    "test:e2e": "node test/e2e/run.mjs"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

@@ -1,3 +1,11 @@
+/** Minimal command executor used by CursorBrowser (mockable in tests). */
+export interface BrowserCommandsExecutor {
+  executeCommand<T = unknown>(
+    command: string,
+    ...rest: unknown[]
+  ): Thenable<T>;
+}
+
 export interface BrowserTab {
   viewId: string;
   url?: string;

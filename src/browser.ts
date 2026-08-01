@@ -1,6 +1,6 @@
-import * as vscode from "vscode";
 import {
   BROWSER_TAB_HELP,
+  type BrowserCommandsExecutor,
   type BrowserTabContext,
   type RunInTabOptions
 } from "./browser.types";
@@ -26,7 +26,7 @@ interface ListTabsResult {
  * stale IDs cause "Browser view not found". Use selectTab + active-view commands.
  */
 export class CursorBrowser {
-  constructor(private readonly commands: typeof vscode.commands) {}
+  constructor(private readonly commands: BrowserCommandsExecutor) {}
 
   async getTabContext(): Promise<BrowserTabContext> {
     const result = (await this.commands.executeCommand(
