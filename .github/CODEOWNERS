@@ -1,0 +1,4 @@
+# Default owners — required reviewers for all changes when branch protection
+# "Require review from Code Owners" is enabled (see scripts/setup-branch-protection.sh).
+
+* @Boobuh

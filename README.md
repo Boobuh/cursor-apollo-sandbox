@@ -16,6 +16,11 @@
 
 > **Cursor only** — uses `cursor.browserView.*` APIs. Does not run in VS Code.
 
+## Contributing
+
+Fork the repo and open a pull request — see [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md).  
+Changes to `main` require **code owner approval** ([@Boobuh](https://github.com/Boobuh)).
+
 ## Install from Marketplace
 
 Search **Cursor Apollo Sandbox** in Cursor Extensions, or:
