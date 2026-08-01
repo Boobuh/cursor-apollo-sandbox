@@ -1,4 +1,5 @@
 import type { CursorBrowser } from "../browser";
+import { tabUrlHasGraphqlPath } from "../browser.utils";
 import type { GraphqlUrlSource, ResolvedSandboxConfig, SandboxConfig } from "./sandbox.types";
 import { deriveGraphqlUrlMatch } from "./sandbox";
 
@@ -33,11 +34,11 @@ export async function resolveSandboxConfig(
     return withDerivedMatch(base, "settings");
   }
 
-  const ctx = await browser.getTabContext();
+  const ctx = await browser.getEnrichedTabContext();
   const candidates: string[] = [];
 
   const push = (url?: string): void => {
-    if (!url || !isGraphqlEndpointUrl(url)) return;
+    if (!url || !tabUrlHasGraphqlPath(url)) return;
     if (!candidates.includes(url)) candidates.push(url);
   };
 

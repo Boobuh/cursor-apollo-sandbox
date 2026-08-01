@@ -17,10 +17,17 @@ const baseConfig = {
   defaultVariablesJson: "{}"
 };
 
+function mockBrowser(ctx) {
+  return {
+    getTabContext: async () => ctx,
+    getEnrichedTabContext: async () => ctx
+  };
+}
+
 describe("isGraphqlEndpointUrl", () => {
   it("accepts /graphql paths", () => {
     assert.equal(
-      isGraphqlEndpointUrl("https://develop.uk.training.lkqacademy.com/graphql"),
+      isGraphqlEndpointUrl("https://app.example.com/graphql"),
       true
     );
     assert.equal(
@@ -60,7 +67,7 @@ describe("normalizeGraphqlEndpointUrl", () => {
 describe("resolveSandboxConfig", () => {
   it("uses settings when browser tab mode is off", async () => {
     const resolved = await resolveSandboxConfig(
-      { getTabContext: async () => ({ tabs: [] }) },
+      mockBrowser({ tabs: [] }),
       baseConfig
     );
     assert.equal(resolved.graphqlUrlSource, "settings");
@@ -70,46 +77,54 @@ describe("resolveSandboxConfig", () => {
 
   it("prefers last-interacted graphql tab when enabled", async () => {
     const resolved = await resolveSandboxConfig(
-      {
-        getTabContext: async () => ({
-          tabs: [
-            { viewId: "a", url: "https://staging.com/graphql" },
-            {
-              viewId: "b",
-              url: "https://develop.uk.training.lkqacademy.com/graphql?x=1"
-            }
-          ],
-          activeViewId: "a",
-          lastInteractedViewId: "b"
-        })
-      },
+      mockBrowser({
+        tabs: [
+          { viewId: "a", url: "https://staging.com/graphql" },
+          {
+            viewId: "b",
+            url: "https://app.example.com/graphql?x=1"
+          }
+        ],
+        activeViewId: "a",
+        lastInteractedViewId: "b"
+      }),
       { ...baseConfig, graphqlUrlFromBrowserTab: true }
     );
     assert.equal(resolved.graphqlUrlSource, "browserTab");
     assert.equal(
       resolved.graphqlUrl,
-      "https://develop.uk.training.lkqacademy.com/graphql"
+      "https://app.example.com/graphql"
     );
     assert.equal(resolved.graphqlUrlMatch, "/graphql");
   });
 
   it("falls back to settings when no graphql tab is open", async () => {
     const resolved = await resolveSandboxConfig(
-      {
-        getTabContext: async () => ({
-          tabs: [{ viewId: "a", url: "https://dev.com/dashboard" }],
-          activeViewId: "a"
-        })
-      },
+      mockBrowser({
+        tabs: [{ viewId: "a", url: "https://dev.com/dashboard" }],
+        activeViewId: "a"
+      }),
       { ...baseConfig, graphqlUrlFromBrowserTab: true }
     );
     assert.equal(resolved.graphqlUrlSource, "settings");
     assert.equal(resolved.graphqlUrl, baseConfig.graphqlUrl);
   });
 
+  it("ignores Apollo Server title when URL lacks /graphql", async () => {
+    const resolved = await resolveSandboxConfig(
+      mockBrowser({
+        tabs: [{ viewId: "a", title: "Apollo Server", url: "https://dev.com/" }],
+        activeViewId: "a",
+        lastInteractedViewId: "a"
+      }),
+      { ...baseConfig, graphqlUrlFromBrowserTab: true }
+    );
+    assert.equal(resolved.graphqlUrlSource, "settings");
+  });
+
   it("keeps explicit graphqlUrlMatch override", async () => {
     const resolved = await resolveSandboxConfig(
-      { getTabContext: async () => ({ tabs: [] }) },
+      mockBrowser({ tabs: [] }),
       { ...baseConfig, graphqlUrlMatch: "/custom-gql" }
     );
     assert.equal(resolved.graphqlUrlMatch, "/custom-gql");

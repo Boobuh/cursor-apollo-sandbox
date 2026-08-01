@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.isGraphqlEndpointUrl = isGraphqlEndpointUrl;
 exports.normalizeGraphqlEndpointUrl = normalizeGraphqlEndpointUrl;
 exports.resolveSandboxConfig = resolveSandboxConfig;
+const browser_utils_1 = require("../browser.utils");
 const sandbox_1 = require("./sandbox");
 /** True when the tab URL looks like an Apollo / GraphQL HTTP endpoint page. */
 function isGraphqlEndpointUrl(raw) {
@@ -30,10 +31,10 @@ async function resolveSandboxConfig(browser, base) {
     if (!base.graphqlUrlFromBrowserTab) {
         return withDerivedMatch(base, "settings");
     }
-    const ctx = await browser.getTabContext();
+    const ctx = await browser.getEnrichedTabContext();
     const candidates = [];
     const push = (url) => {
-        if (!url || !isGraphqlEndpointUrl(url))
+        if (!url || !(0, browser_utils_1.tabUrlHasGraphqlPath)(url))
             return;
         if (!candidates.includes(url))
             candidates.push(url);

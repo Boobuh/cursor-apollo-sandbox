@@ -2,7 +2,7 @@
   "name": "cursor-apollo-sandbox",
   "displayName": "Cursor Apollo Sandbox",
   "description": "Auto-fill Apollo Server Sandbox in Cursor's embedded browser — GraphQL operation, variables, and auto-detected auth headers. Requires Cursor (not VS Code).",
-  "version": "0.3.4",
+  "version": "0.7.0",
   "publisher": "boobuh",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -40,7 +40,8 @@
     "onCommand:apolloSandbox.fillSandbox",
     "onCommand:apolloSandbox.runOperation",
     "onCommand:apolloSandbox.setupSandbox",
-    "onCommand:apolloSandbox.openGraphql"
+    "onCommand:apolloSandbox.openGraphql",
+    "onCommand:apolloSandbox.newBrowserTab"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -74,8 +75,29 @@
         "command": "apolloSandbox.runSelfTest",
         "title": "Run Self Test (E2E)",
         "category": "Apollo Sandbox"
+      },
+      {
+        "command": "apolloSandbox.newBrowserTab",
+        "title": "New Browser Tab",
+        "category": "Cursor Browser"
       }
     ],
+    "menus": {
+      "editor/tabs/context": [
+        {
+          "command": "apolloSandbox.newBrowserTab",
+          "group": "1_open",
+          "order": 5
+        }
+      ],
+      "emptyEditorGroup/context": [
+        {
+          "command": "apolloSandbox.newBrowserTab",
+          "group": "1_open",
+          "order": 5
+        }
+      ]
+    },
     "configuration": {
       "title": "Apollo Sandbox",
       "properties": {
@@ -113,13 +135,13 @@
         },
         "apolloSandbox.sandboxWaitMs": {
           "type": "number",
-          "default": 9000,
-          "description": "Milliseconds to wait after reloading the Sandbox iframe."
+          "default": 12000,
+          "description": "Max milliseconds to wait for Sandbox schema connection (green status) before applying operation and variables."
         },
         "apolloSandbox.headerDetectMs": {
           "type": "number",
-          "default": 6000,
-          "description": "Milliseconds to listen for GraphQL traffic and probe the endpoint when auto-detecting headers."
+          "default": 12000,
+          "description": "Milliseconds to listen for GraphQL traffic while searching for a real operation and auth headers."
         }
       }
     }

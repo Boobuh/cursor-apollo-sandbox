@@ -18,6 +18,8 @@ export function endpointHint(config: ResolvedSandboxConfig): string {
   return ` — endpoint from browser tab (${config.graphqlUrl})`;
 }
 
+import { isTrivialProbeQuery } from "./apollo/header-detection";
+
 export function headerSummary(auth: CapturedGraphqlAuth): string {
   const keys = Object.keys(auth.headers);
   const sources = auth.sources?.length
@@ -26,10 +28,22 @@ export function headerSummary(auth: CapturedGraphqlAuth): string {
   const verified = auth.probeOk ? " — probe OK" : "";
 
   if (!keys.length) {
-    return auth.probeOk || auth.graphqlSeen
-      ? `Using cookie session for GraphQL${sources}${verified}.`
-      : `No extra headers detected${sources}.`;
+    return `No GraphQL traffic headers captured${sources}.`;
   }
 
-  return `Auto-detected ${keys.length} header(s): ${keys.join(", ")}${sources}${verified}.`;
+  return `Captured ${keys.length} header(s) from GraphQL network traffic: ${keys.join(", ")}${sources}${verified}.`;
+}
+
+export function captureSummary(auth: CapturedGraphqlAuth): string {
+  const base = headerSummary(auth);
+  const operation = auth.operation?.trim();
+  if (!operation || isTrivialProbeQuery(operation)) {
+    return base;
+  }
+  const opPreview = operation.replace(/\s+/g, " ").trim().slice(0, 48);
+  const varsHint =
+    auth.variablesJson && auth.variablesJson.trim() !== "{}"
+      ? " + variables"
+      : "";
+  return `${base} Operation from traffic: ${opPreview}${opPreview.length < operation.length ? "…" : ""}${varsHint}.`;
 }

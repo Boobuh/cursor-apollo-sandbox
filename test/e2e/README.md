@@ -13,7 +13,7 @@ Writes `tmp/e2e-trigger.json` before launch and sets `APOLLO_E2E=1` on the Curso
 Optional:
 
 ```bash
-APOLLO_E2E_GRAPHQL_URL=https://develop.uk.training.lkqacademy.com/graphql npm run test:e2e
+APOLLO_E2E_GRAPHQL_URL=https://app.example.com/graphql npm run test:e2e
 ```
 
 Requires a desktop Cursor install (`CURSOR_EXECUTABLE_PATH` overrides auto-detect).

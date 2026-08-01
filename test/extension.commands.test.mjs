@@ -19,7 +19,7 @@ describe("registerApolloSandboxCommands", () => {
     });
 
     assert.equal(vscode.handlers.size, APOLLO_COMMAND_IDS.length);
-    assert.equal(APOLLO_COMMAND_IDS.length, 8);
+    assert.equal(APOLLO_COMMAND_IDS.length, 9);
     for (const id of APOLLO_COMMAND_IDS) {
       assert.ok(vscode.handlers.has(id), `missing handler for ${id}`);
     }
@@ -27,6 +27,22 @@ describe("registerApolloSandboxCommands", () => {
       vscode.context.subscriptions.length,
       APOLLO_COMMAND_IDS.length
     );
+  });
+
+  it("newBrowserTab opens a blank Cursor browser tab", async () => {
+    const vscode = createMockVscode();
+    let openedUrl;
+    const browser = createMockBrowser({
+      newTab: async (url) => {
+        openedUrl = url;
+        return "view-new";
+      }
+    });
+
+    registerApolloSandboxCommands(vscode.context, { api: vscode, browser });
+    await vscode.handlers.get("apolloSandbox.newBrowserTab")();
+
+    assert.equal(openedUrl, "about:blank");
   });
 
   it("openGraphql ensures tab and shows information message", async () => {
@@ -75,11 +91,12 @@ describe("registerApolloSandboxCommands", () => {
       }
     });
     const browser = createMockBrowser({
-      listTabs: async () => [],
       runInTab: async () => ({
-        headers: { Authorization: "Bearer tok" },
+        headers: { Authorization: "Bearer tok", "X-Company-Id": "1" },
+        operation: "query Employees { items { id } }",
+        variablesJson: "{}",
         probeOk: true,
-        sources: ["traffic"],
+        sources: ["apollo-link"],
         graphqlSeen: true
       })
     });
@@ -90,7 +107,7 @@ describe("registerApolloSandboxCommands", () => {
     assert.equal(vscode.progressTitles.length, 1);
     assert.match(vscode.progressTitles[0], /auto-detecting headers/);
     assert.equal(vscode.infoMessages.length, 1);
-    assert.match(vscode.infoMessages[0], /Auto-detected 1 header/);
+    assert.match(vscode.infoMessages[0], /Captured 2 header\(s\) from GraphQL network traffic/);
   });
 
   it("runOperation shows OK preview from browser result", async () => {
@@ -106,15 +123,24 @@ describe("registerApolloSandboxCommands", () => {
       listTabs: async () => [],
       runInTab: async (script) => {
         runCount += 1;
-        if (String(script).includes("sessionStorage.setItem")) {
-          return {
-            headers: {},
-            probeOk: true,
-            sources: ["probe:cookie-only"],
-            graphqlSeen: true
-          };
+        const s = String(script);
+        if (s.includes("sessionStorage.setItem('__apolloAuth'")) {
+          return true;
         }
-        return { data: { __typename: "Query" }, ms: 42 };
+        if (s.includes("const query =") && s.includes("fetch(")) {
+          return { data: { __typename: "Query" }, ms: 42 };
+        }
+        return {
+          headers: {
+            Authorization: "Bearer x",
+            "X-Company-Id": "1"
+          },
+          operation: "query Employees { items { id } }",
+          variablesJson: "{}",
+          probeOk: true,
+          sources: ["apollo-link"],
+          graphqlSeen: true
+        };
       }
     });
 
@@ -148,7 +174,7 @@ describe("registerApolloSandboxCommands", () => {
       config: { graphqlUrl: "http://localhost:3001/graphql" }
     });
     const browser = createMockBrowser({
-      listTabs: async () => {
+      getEnrichedTabContext: async () => {
         throw new Error("Browser view not found");
       }
     });

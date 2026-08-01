@@ -3,7 +3,7 @@ import { runSelfTestCommand } from "./e2e/run-on-activation";
 import { CursorBrowser } from "./browser";
 import { BROWSER_TAB_HELP } from "./browser.types";
 import { isBrowserViewError } from "./browser.utils";
-import { endpointHint, headerSummary } from "./extension.helpers";
+import { endpointHint, captureSummary } from "./extension.helpers";
 import {
   autoDetectHeaders,
   fillSandbox,
@@ -15,6 +15,7 @@ import type { ExtensionCommandDeps, ExtensionHostApi } from "./extension.types";
 
 export const APOLLO_COMMAND_IDS = [
   "apolloSandbox.openGraphql",
+  "apolloSandbox.newBrowserTab",
   "apolloSandbox.captureAuth",
   "apolloSandbox.fillSandbox",
   "apolloSandbox.runOperation",
@@ -23,6 +24,8 @@ export const APOLLO_COMMAND_IDS = [
   "apolloSandbox.setupExportTemplate",
   "apolloSandbox.runSelfTest"
 ] as const;
+
+const NEW_BROWSER_TAB_DEFAULT_URL = "about:blank";
 
 export type ApolloCommandId = (typeof APOLLO_COMMAND_IDS)[number];
 
@@ -66,10 +69,20 @@ export function registerApolloSandboxCommands(
       "apolloSandbox.openGraphql",
       safeCommand(api, async () => {
         const config = await getResolvedConfig(api, browser);
-        await browser.ensureBrowserTab(config.graphqlUrl);
+        await browser.ensureBrowserTab(config.graphqlUrl, { createIfMissing: true });
         api.window.showInformationMessage(
           `Opened ${config.graphqlUrl}${endpointHint(config)}`
         );
+      })
+    ),
+
+    api.commands.registerCommand(
+      "apolloSandbox.newBrowserTab",
+      safeCommand(api, async () => {
+        const viewId = await browser.newTab(NEW_BROWSER_TAB_DEFAULT_URL);
+        if (!viewId) {
+          throw new Error(`Could not open Cursor browser tab. ${BROWSER_TAB_HELP}`);
+        }
       })
     ),
 
@@ -83,7 +96,7 @@ export function registerApolloSandboxCommands(
             const config = await getResolvedConfig(api, browser);
             const auth = await autoDetectHeaders(browser, config);
             api.window.showInformationMessage(
-              headerSummary(auth) + endpointHint(config)
+              captureSummary(auth) + endpointHint(config)
             );
           }
         );
@@ -101,7 +114,7 @@ export function registerApolloSandboxCommands(
             const auth = await autoDetectHeaders(browser, config);
             await fillSandbox(browser, config, auth);
             api.window.showInformationMessage(
-              `Sandbox filled. ${headerSummary(auth)}${endpointHint(config)}`
+              `Sandbox filled. ${captureSummary(auth)}${endpointHint(config)}`
             );
           }
         );
@@ -116,8 +129,8 @@ export function registerApolloSandboxCommands(
           "Apollo Sandbox: detecting headers and running…",
           async () => {
             const config = await getResolvedConfig(api, browser);
-            await autoDetectHeaders(browser, config);
-            const { data, ms } = await runOperation(browser, config);
+            const auth = await autoDetectHeaders(browser, config);
+            const { data, ms } = await runOperation(browser, config, auth);
             const preview = data
               ? JSON.stringify(data).slice(0, 120)
               : "see Response panel";
@@ -136,8 +149,12 @@ export function registerApolloSandboxCommands(
           const config = await getResolvedConfig(api, browser);
           const auth = await autoDetectHeaders(browser, config);
           await fillSandbox(browser, config, auth);
+          const { data, ms } = await runOperation(browser, config, auth);
+          const preview = data
+            ? JSON.stringify(data).slice(0, 120)
+            : "see Response panel";
           api.window.showInformationMessage(
-            `Apollo Sandbox ready. ${headerSummary(auth)}${endpointHint(config)}`
+            `Apollo Sandbox ready (${ms ?? "?"}ms): ${preview}. ${captureSummary(auth)}${endpointHint(config)}`
           );
         });
       })

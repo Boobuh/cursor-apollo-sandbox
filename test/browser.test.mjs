@@ -19,6 +19,7 @@ describe("CursorBrowser.runInTab", () => {
     const { commands } = createMockCommands({
       "cursor.browserView.listTabs": listTabsHandler(ctx),
       "cursor.browserView.selectTab": () => ({ success: true }),
+      "cursor.browserView.getURL": () => GRAPHQL,
       "cursor.browserView.executeJavaScript": (script) => ({ script })
     });
     const browser = new CursorBrowser(commands);
@@ -62,6 +63,7 @@ describe("CursorBrowser.runInTab", () => {
         tabs: [],
         activeViewId: undefined
       }),
+      "cursor.browserView.getURL": () => undefined,
       "cursor.browserView.executeJavaScript": () => {
         throw new Error("Browser view not found");
       }
@@ -70,8 +72,41 @@ describe("CursorBrowser.runInTab", () => {
 
     await assert.rejects(
       () => browser.runInTab("x", {}),
-      /Focus your GraphQL/
+      /Focus a logged-in tab/
     );
+  });
+  it("runs script on active view when listTabs is empty but getURL works", async () => {
+    const { commands } = createMockCommands({
+      "cursor.browserView.listTabs": () => ({ tabs: [] }),
+      "cursor.browserView.getURL": () => GRAPHQL,
+      "cursor.browserView.executeJavaScript": (script) => ({ script })
+    });
+    const browser = new CursorBrowser(commands);
+
+    const result = await browser.runInTab("return 42", { targetUrl: GRAPHQL });
+    assert.deepEqual(result, { script: "return 42" });
+  });
+
+  it("navigates active view to graphql when navigateToTargetUrl is set", async () => {
+    const { commands, calls } = createMockCommands({
+      "cursor.browserView.listTabs": () => ({ tabs: [] }),
+      "cursor.browserView.getURL": () => "https://dev.com/en/app",
+      "cursor.browserView.navigate": () => undefined,
+      "cursor.browserView.executeJavaScript": () => {
+        throw new Error("Browser view not found");
+      }
+    });
+    const browser = new CursorBrowser(commands);
+
+    await assert.rejects(
+      () =>
+        browser.runInTab("x", {
+          targetUrl: GRAPHQL,
+          navigateToTargetUrl: true
+        }),
+      /Focus a logged-in tab/
+    );
+    assert.ok(calls.some((c) => c.cmd === "cursor.browserView.navigate"));
   });
 });
 
@@ -101,7 +136,7 @@ describe("CursorBrowser.ensureBrowserTab", () => {
     });
     const browser = new CursorBrowser(commands);
 
-    await browser.ensureBrowserTab(GRAPHQL);
+    await browser.ensureBrowserTab(GRAPHQL, { createIfMissing: true });
 
     assert.ok(calls.some((c) => c.cmd === "cursor.browserView.newTab"));
     assert.equal(
@@ -146,5 +181,43 @@ describe("CursorBrowser.getTabContext", () => {
     assert.equal(ctx.tabs.length, 1);
     assert.equal(ctx.activeViewId, "a");
     assert.equal(ctx.lastInteractedViewId, "b");
+  });
+});
+
+describe("CursorBrowser.getEnrichedTabContext", () => {
+  it("probes tabs missing URLs via selectTab and getURL", async () => {
+    const ctx = {
+      tabs: [
+        { viewId: "tab-1", title: "Apollo Server" },
+        { viewId: "tab-2", url: "https://dev.com/dashboard" }
+      ],
+      activeViewId: "tab-1"
+    };
+    const { commands } = createMockCommands({
+      "cursor.browserView.listTabs": listTabsHandler(ctx),
+      "cursor.browserView.selectTab": () => ({ success: true }),
+      "cursor.browserView.getURL": () => GRAPHQL
+    });
+    const browser = new CursorBrowser(commands);
+
+    const enriched = await browser.getEnrichedTabContext();
+    assert.equal(enriched.tabs[0]?.url, GRAPHQL);
+  });
+
+  it("runs script on graphql tab discovered after URL probe", async () => {
+    const ctx = {
+      tabs: [{ viewId: "tab-1", title: "Apollo Server" }],
+      activeViewId: "tab-1"
+    };
+    const { commands } = createMockCommands({
+      "cursor.browserView.listTabs": listTabsHandler(ctx),
+      "cursor.browserView.selectTab": () => ({ success: true }),
+      "cursor.browserView.getURL": () => GRAPHQL,
+      "cursor.browserView.executeJavaScript": (script) => ({ script })
+    });
+    const browser = new CursorBrowser(commands);
+
+    const result = await browser.runInTab("return 42", { targetUrl: GRAPHQL });
+    assert.deepEqual(result, { script: "return 42" });
   });
 });

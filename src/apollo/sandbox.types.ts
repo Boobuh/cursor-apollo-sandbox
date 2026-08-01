@@ -1,6 +1,10 @@
-/** Headers captured from live GraphQL traffic (Authorization, API keys, custom headers). */
+/** Headers + optional operation captured from live GraphQL traffic. */
 export interface CapturedGraphqlAuth {
   headers: Record<string, string>;
+  /** GraphQL document string from the last captured POST body. */
+  operation?: string;
+  /** JSON object string for Sandbox variables panel. */
+  variablesJson?: string;
   graphqlSeen?: boolean;
   probeOk?: boolean;
   sources?: string[];

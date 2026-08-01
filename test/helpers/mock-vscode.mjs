@@ -57,15 +57,20 @@ export function createMockVscode(options = {}) {
 /** Minimal CursorBrowser stand-in for command tests. */
 export function createMockBrowser(overrides = {}) {
   const graphqlUrl = "http://localhost:3001/graphql";
+  const emptyCtx = async () => ({ tabs: [], activeViewId: undefined });
   return {
-    getTabContext: async () => ({ tabs: [], activeViewId: undefined }),
+    getTabContext: emptyCtx,
+    getEnrichedTabContext: emptyCtx,
     listTabs: async () => [],
     ensureBrowserTab: async () => undefined,
+    newTab: async () => "mock-view-id",
     waitForLoad: async () => undefined,
     runInTab: async () => ({
       headers: { Authorization: "Bearer test" },
+      operation: "query Employees { items { id } }",
+      variablesJson: "{}",
       probeOk: true,
-      sources: ["probe:cookie-only"],
+      sources: ["traffic"],
       graphqlSeen: true
     }),
     ...overrides,

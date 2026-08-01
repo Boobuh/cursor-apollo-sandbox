@@ -83,15 +83,30 @@ Command Palette → **Apollo Sandbox**.
 | `apolloSandbox.defaultOperation` | `query ExampleQuery { __typename }` | Multi-line operation                                                         |
 | `apolloSandbox.defaultVariables` | `{}`                                | JSON variables                                                               |
 | `apolloSandbox.headerDetectMs`   | `6000`                              | Listen + probe timeout (ms)                                                  |
-| `apolloSandbox.sandboxWaitMs`    | `9000`                              | Wait after iframe reload (ms)                                                |
+| `apolloSandbox.sandboxWaitMs`    | `12000`                             | Max wait for Sandbox schema connection (green) before fill (ms)              |
 
 ## How it works
 
 Apollo Sandbox runs in a cross-origin iframe. This extension:
 
-1. **Auto-detects** headers from live traffic, browser storage, and endpoint probes
-2. **Rebuilds** the embed URL with Apollo's `document`, `variables`, and `headers` params
-3. **Relays** Sandbox Run via `postMessage` on the parent page (`credentials: include` for cookies)
+1. **Auto-detects** headers from live GraphQL traffic on open app tabs
+2. **Bootstraps** the embed (endpoint + headers only) and waits for schema connection (green status)
+3. **Fills** operation + pretty-printed variables after introspection succeeds
+4. **Relays** Sandbox requests via the official Apollo embed `postMessage` protocol on the parent page
+
+### Embed postMessage protocol
+
+The iframe speaks the same message names as `@apollo/sandbox` (embeddable-explorer):
+
+| Inbound (iframe → parent) | Parent reply |
+| --- | --- |
+| `ExplorerListeningForHandshake` | `HandshakeResponse` |
+| `IntrospectionQueryWithHeaders` | `SchemaResponse` or `SchemaError` |
+| `ExplorerRequest` | `ExplorerResponse` |
+
+Earlier builds used incorrect names (`QueryMutationRequest`, `IntrospectionQuery`) so introspection never completed and the status dot stayed red. v0.7+ implements the protocol above and is covered by unit tests in `test/sandbox-relay.test.mjs`.
+
+Fill always completes even when the green wait times out — operation/variables are still applied.
 
 ### Cursor browser safety
 

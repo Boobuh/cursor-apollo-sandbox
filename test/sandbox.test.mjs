@@ -5,6 +5,7 @@ import {
   buildRunOperationScript,
   buildSandboxIframeUrl,
   deriveGraphqlUrlMatch,
+  formatVariablesJson,
   parseVariablesJson
 } from "../dist/apollo/sandbox.js";
 
@@ -35,6 +36,16 @@ describe("parseVariablesJson", () => {
   });
 });
 
+describe("formatVariablesJson", () => {
+  it("pretty-prints JSON objects with 2-space indent", () => {
+    assert.equal(
+      formatVariablesJson('{"paginateInput":{"page":1,"perPage":100}}'),
+      '{\n  "paginateInput": {\n    "page": 1,\n    "perPage": 100\n  }\n}'
+    );
+    assert.equal(formatVariablesJson("{}"), "{}");
+  });
+});
+
 describe("buildSandboxIframeUrl", () => {
   it("embeds endpoint, document, variables, and headers", () => {
     const url = buildSandboxIframeUrl(
@@ -47,7 +58,8 @@ describe("buildSandboxIframeUrl", () => {
     assert.equal(parsed.hostname, "sandbox.embed.apollographql.com");
     assert.equal(parsed.searchParams.get("endpoint"), "http://localhost:3001/graphql");
     assert.equal(parsed.searchParams.get("document"), "query { __typename }");
-    assert.equal(parsed.searchParams.get("variables"), '{"a":1}');
+    assert.equal(parsed.searchParams.get("variables"), '{\n  "a": 1\n}');
+    assert.equal(parsed.searchParams.get("persistExplorerState"), "false");
     assert.deepEqual(JSON.parse(parsed.searchParams.get("headers")), {
       Authorization: "Bearer tok"
     });
@@ -55,14 +67,36 @@ describe("buildSandboxIframeUrl", () => {
 });
 
 describe("buildFillSandboxScript", () => {
-  it("generates async IIFE with iframe URL and wait time", () => {
-    const script = buildFillSandboxScript("https://sandbox.example/iframe", 5000);
+  it("generates two-phase fill: bootstrap, wait for schema, then apply operation", () => {
+    const script = buildFillSandboxScript(
+      "https://dev.com/graphql",
+      "query Foo { bar }",
+      '{"id":"1"}',
+      5000
+    );
     assert.match(script, /^\(async \(\) => \{/);
-    assert.match(script, /const iframeUrl = "https:\/\/sandbox\.example\/iframe"/);
-    assert.match(script, /const waitMs = 5000/);
+    assert.match(script, /const graphqlEndpoint = "https:\/\/dev\.com\/graphql"/);
+    assert.match(script, /const initWaitMs = 5000/);
     assert.match(script, /#embeddableSandbox/);
     assert.match(script, /__apolloAuth/);
-    assert.match(script, /QueryMutationRequest/);
+    assert.match(script, /persistExplorerState/);
+    assert.match(script, /formatVariablesJson/);
+    assert.match(script, /JSON\.stringify\(parsed, null, 2\)/);
+    assert.match(script, /buildBootstrapUrl/);
+    assert.match(script, /buildFilledUrl/);
+    assert.match(script, /waitForSchemaReady/);
+    assert.match(script, /schemaReady/);
+    assert.match(script, /addEventListener\('message', onMsg\)/);
+    assert.match(script, /iframe\.src = buildBootstrapUrl\(\)/);
+    assert.match(script, /iframe\.src = buildFilledUrl\(\)/);
+    assert.match(script, /ExplorerListeningForHandshake/);
+    assert.match(script, /HandshakeResponse/);
+    assert.match(script, /IntrospectionQueryWithHeaders/);
+    assert.match(script, /SchemaResponse/);
+    assert.match(script, /ExplorerRequest/);
+    assert.match(script, /ExplorerResponse/);
+    assert.match(script, /probeEndpoint/);
+    assert.doesNotMatch(script, /wait for green status timed out/);
   });
 });
 

@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   collectTargetHosts,
+  captureSummary,
   endpointHint,
   headerSummary
 } from "../dist/extension.helpers.js";
@@ -54,21 +55,61 @@ describe("headerSummary", () => {
         sources: ["traffic"],
         probeOk: true
       }),
-      /Auto-detected 2 header\(s\): Authorization, X-Company-Id/
+      /Captured 2 header\(s\) from GraphQL network traffic: Authorization, X-Company-Id/
     );
   });
 
   it("describes cookie-only sessions", () => {
     assert.match(
-      headerSummary({ headers: {}, probeOk: true, sources: ["probe:cookie-only"] }),
-      /Using cookie session for GraphQL/
+      headerSummary({
+        headers: {},
+        probeOk: false,
+        sources: ["no-graphql-traffic"]
+      }),
+      /No GraphQL traffic headers captured/
+    );
+  });
+
+  it("describes traffic capture", () => {
+    assert.match(
+      headerSummary({
+        headers: { Authorization: "Bearer x", "X-Company-Id": "1" },
+        probeOk: true,
+        sources: ["traffic"]
+      }),
+      /Captured 2 header\(s\) from GraphQL network traffic/
     );
   });
 
   it("handles empty detection", () => {
     assert.match(
-      headerSummary({ headers: {}, sources: ["storage"] }),
-      /No extra headers detected/
+      headerSummary({ headers: {}, sources: ["no-graphql-traffic"] }),
+      /No GraphQL traffic headers captured/
+    );
+  });
+});
+
+describe("captureSummary", () => {
+  it("includes operation preview when captured from traffic", () => {
+    assert.match(
+      captureSummary({
+        headers: { Authorization: "Bearer x" },
+        operation: "query Employees { items { id name } }",
+        variablesJson: '{"filter":{"search":"a"}}',
+        sources: ["traffic"],
+        probeOk: true
+      }),
+      /Operation from traffic: query Employees \{ items \{ id name \} \}/
+    );
+    assert.match(
+      captureSummary({
+        headers: { Authorization: "Bearer x" },
+        operation: "query Employees { items { id name } }",
+        variablesJson: '{"filter":{"search":"a"}}',
+        sources: ["traffic"],
+        probeOk: true
+      }),
+      /\+ variables/
     );
   });
 });
