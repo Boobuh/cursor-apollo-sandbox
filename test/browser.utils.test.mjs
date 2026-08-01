@@ -4,7 +4,8 @@ import {
   browserTabMatchesUrl,
   findTabByHostInContext,
   findTabByUrlInContext,
-  isBrowserViewError
+  isBrowserViewError,
+  normalizePath
 } from "../dist/browser.utils.js";
 
 describe("isBrowserViewError", () => {
@@ -52,6 +53,14 @@ describe("findTabByUrlInContext", () => {
       "https://dev.com/graphql"
     );
     assert.equal(tab?.viewId, "b");
+  });
+});
+
+describe("normalizePath", () => {
+  it("strips trailing slashes and preserves root", () => {
+    assert.equal(normalizePath("/graphql/"), "/graphql");
+    assert.equal(normalizePath("/"), "/");
+    assert.equal(normalizePath(""), "/");
   });
 });
 
