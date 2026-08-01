@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Apply GitHub branch protection on main: PRs required, code owner (@Boobuh) must approve.
-# Requires: gh auth login (admin on repo) OR GH_TOKEN with repo admin scope.
+# Create GitHub branch ruleset on main (matches Settings → Rules → New branch ruleset UI).
+# Requires: gh auth login (repo admin) OR GH_TOKEN with admin:repo scope.
 set -euo pipefail
 
 REPO="${GITHUB_REPO:-Boobuh/cursor-apollo-sandbox}"
-BRANCH="${PROTECTED_BRANCH:-main}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 if ! command -v gh >/dev/null 2>&1; then
   echo "Install GitHub CLI: https://cli.github.com/"
@@ -13,39 +13,30 @@ fi
 
 if ! gh auth status >/dev/null 2>&1; then
   echo "Run: gh auth login"
+  echo "Then re-run: $0"
   exit 1
 fi
 
-echo "Applying branch protection to ${REPO}@${BRANCH}…"
+existing="$(gh api "/repos/${REPO}/rulesets" --jq '.[].name' 2>/dev/null | grep -Fx 'Protect main' || true)"
+if [[ -n "$existing" ]]; then
+  echo "Ruleset 'Protect main' already exists on ${REPO}."
+  exit 0
+fi
 
+echo "Creating branch ruleset on ${REPO}…"
 gh api \
-  --method PUT \
+  --method POST \
   -H "Accept: application/vnd.github+json" \
-  "/repos/${REPO}/branches/${BRANCH}/protection" \
-  --input - <<'EOF'
-{
-  "required_status_checks": null,
-  "enforce_admins": true,
-  "required_pull_request_reviews": {
-    "dismiss_stale_reviews": true,
-    "require_code_owner_reviews": true,
-    "required_approving_review_count": 1,
-    "require_last_push_approval": true
-  },
-  "restrictions": null,
-  "required_linear_history": false,
-  "allow_force_pushes": false,
-  "allow_deletions": false,
-  "block_creations": false,
-  "required_conversation_resolution": true
-}
-EOF
+  -H "X-GitHub-Api-Version: 2022-11-28" \
+  "/repos/${REPO}/rulesets" \
+  --input "${SCRIPT_DIR}/ruleset-protect-main.json"
 
 echo ""
-echo "Done. Settings:"
-echo "  - Pull requests required before merge"
-echo "  - Code owner review required (.github/CODEOWNERS → @Boobuh)"
-echo "  - Stale reviews dismissed on new pushes"
-echo "  - Admins cannot bypass (enforce_admins)"
+echo "Done — same as GitHub UI rules/new?target=branch:"
+echo "  - Target: main"
+echo "  - Require PR + 1 approval + CODEOWNERS (@Boobuh)"
+echo "  - Dismiss stale reviews; require last-push approval"
+echo "  - Require resolved conversations"
+echo "  - Block force pushes"
 echo ""
-echo "Contributors: fork → PR. Only you approve & merge (no write access needed for them)."
+echo "Contributors fork → PR. Only you approve & merge."
