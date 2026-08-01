@@ -1,0 +1,47 @@
+{
+  "name": "singularis",
+  "displayName": "Singularis",
+  "description": "Publisher namespace for Singularis extensions by Boobuh. Placeholder package — future extensions ship under publisher Singularis.",
+  "version": "0.0.3",
+  "publisher": "Singularis",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#1e1e2e",
+    "theme": "dark"
+  },
+  "homepage": "https://github.com/Boobuh/cursor-apollo-sandbox/tree/main/publishers/singularis#readme",
+  "bugs": {
+    "url": "https://github.com/Boobuh/cursor-apollo-sandbox/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Boobuh/cursor-apollo-sandbox.git",
+    "directory": "publishers/singularis"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "singularis.about",
+        "title": "About Singularis Publisher",
+        "category": "Singularis"
+      }
+    ]
+  },
+  "scripts": {
+    "package": "vsce package --no-dependencies",
+    "publish:marketplace": "vsce publish --no-dependencies",
+    "publish:openvsx": "npm run package && bash scripts/publish-openvsx.sh"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.2.1"
+  }
+}

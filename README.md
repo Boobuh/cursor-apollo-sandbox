@@ -47,6 +47,18 @@ VSCE_PAT=*** npm run publish:marketplace
 
 See `scripts/publish.sh` for details.
 
+### Singularis (second publisher)
+
+Future extensions can use publisher **`Singularis`**. Cursor Apollo Sandbox stays on **`boobuh`**.
+
+```bash
+cp .env.example .env   # add OVSX_PAT / VSCE_PAT
+npm run publish:singularis:openvsx      # Open VSX namespace bootstrap
+npm run publish:singularis:marketplace  # after creating publisher on Marketplace
+```
+
+Details: [`publishers/singularis/README.md`](publishers/singularis/README.md)
+
 ## Requirements
 
 - **Cursor** with embedded Browser tab (`cursor.browserView.*` commands)

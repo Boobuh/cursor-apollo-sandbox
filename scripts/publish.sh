@@ -3,6 +3,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+if [[ -f .env ]]; then
+  # shellcheck disable=SC1091
+  set -a && source .env && set +a
+fi
+
 PUBLISHER="${VSCE_PUBLISHER:-boobuh}"
 
 if ! command -v vsce >/dev/null 2>&1 && ! npx --yes @vscode/vsce --version >/dev/null 2>&1; then
