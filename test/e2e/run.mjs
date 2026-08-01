@@ -84,6 +84,8 @@ async function main() {
   const child = spawn(cursor, args, {
     env: {
       ...process.env,
+      APOLLO_E2E: "1",
+      APOLLO_E2E_RESULTS: resultsPath,
       APOLLO_E2E_GRAPHQL_URL:
         process.env.APOLLO_E2E_GRAPHQL_URL ?? "http://localhost:3001/graphql"
     },

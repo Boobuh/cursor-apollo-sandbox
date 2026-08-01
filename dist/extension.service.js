@@ -17,7 +17,12 @@ function getBaseConfig(api) {
     const graphqlUrl = cfg.get("graphqlUrl") ?? "http://localhost:4000/graphql";
     const defaultOperation = cfg.get("defaultOperation")?.trim() || sandbox_1.FALLBACK_OPERATION;
     const defaultVariablesRaw = cfg.get("defaultVariables")?.trim() || sandbox_1.FALLBACK_VARIABLES_JSON;
-    (0, sandbox_1.parseVariablesJson)(defaultVariablesRaw);
+    try {
+        (0, sandbox_1.parseVariablesJson)(defaultVariablesRaw);
+    }
+    catch {
+        /* defer invalid-config error until a command runs */
+    }
     return {
         authCaptureUrl: cfg.get("authCaptureUrl") ?? "",
         graphqlUrl,

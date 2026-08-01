@@ -29,14 +29,18 @@ export class CursorBrowser {
   constructor(private readonly commands: BrowserCommandsExecutor) {}
 
   async getTabContext(): Promise<BrowserTabContext> {
-    const result = (await this.commands.executeCommand(
-      "cursor.browserView.listTabs"
-    )) as ListTabsResult | undefined;
-    return {
-      tabs: result?.tabs ?? [],
-      activeViewId: result?.activeViewId,
-      lastInteractedViewId: result?.lastInteractedViewId
-    };
+    try {
+      const result = (await this.commands.executeCommand(
+        "cursor.browserView.listTabs"
+      )) as ListTabsResult | undefined;
+      return {
+        tabs: result?.tabs ?? [],
+        activeViewId: result?.activeViewId,
+        lastInteractedViewId: result?.lastInteractedViewId
+      };
+    } catch {
+      return { tabs: [] };
+    }
   }
 
   async listTabs(): Promise<BrowserTabContext["tabs"]> {

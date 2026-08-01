@@ -33,7 +33,11 @@ export function getBaseConfig(api: ExtensionHostApi): SandboxConfig {
   const defaultVariablesRaw =
     cfg.get<string>("defaultVariables")?.trim() || FALLBACK_VARIABLES_JSON;
 
-  parseVariablesJson(defaultVariablesRaw);
+  try {
+    parseVariablesJson(defaultVariablesRaw);
+  } catch {
+    /* defer invalid-config error until a command runs */
+  }
 
   return {
     authCaptureUrl: cfg.get<string>("authCaptureUrl") ?? "",

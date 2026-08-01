@@ -38,8 +38,10 @@ exports.activate = activate;
 exports.deactivate = deactivate;
 const vscode = __importStar(require("vscode"));
 const extension_commands_1 = require("./extension.commands");
+const run_on_activation_1 = require("./e2e/run-on-activation");
 const sandbox_1 = require("./apollo/sandbox");
 Object.defineProperty(exports, "deriveGraphqlUrlMatch", { enumerable: true, get: function () { return sandbox_1.deriveGraphqlUrlMatch; } });
+const LOG_PREFIX = "[Cursor Apollo Sandbox]";
 function asExtensionHostApi() {
     return {
         commands: vscode.commands,
@@ -48,8 +50,22 @@ function asExtensionHostApi() {
         ProgressLocation: vscode.ProgressLocation
     };
 }
+function logActivationError(scope, err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`${LOG_PREFIX} ${scope}: ${message}`);
+}
+/** Activation must never throw — an uncaught error here can destabilize Cursor on startup. */
 function activate(context) {
-    (0, extension_commands_1.registerApolloSandboxCommands)(context, (0, extension_commands_1.createDefaultDeps)(asExtensionHostApi()));
+    try {
+        (0, extension_commands_1.registerApolloSandboxCommands)(context, (0, extension_commands_1.createDefaultDeps)(asExtensionHostApi()));
+    }
+    catch (err) {
+        logActivationError("command registration failed", err);
+        return;
+    }
+    if (process.env.APOLLO_E2E === "1") {
+        void (0, run_on_activation_1.maybeRunE2EOnActivation)(asExtensionHostApi(), context.extensionPath).catch((err) => logActivationError("E2E on activation failed", err));
+    }
 }
 function deactivate() { }
 var extension_commands_2 = require("./extension.commands");

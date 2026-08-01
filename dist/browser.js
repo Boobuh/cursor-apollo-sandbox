@@ -15,12 +15,17 @@ class CursorBrowser {
         this.commands = commands;
     }
     async getTabContext() {
-        const result = (await this.commands.executeCommand("cursor.browserView.listTabs"));
-        return {
-            tabs: result?.tabs ?? [],
-            activeViewId: result?.activeViewId,
-            lastInteractedViewId: result?.lastInteractedViewId
-        };
+        try {
+            const result = (await this.commands.executeCommand("cursor.browserView.listTabs"));
+            return {
+                tabs: result?.tabs ?? [],
+                activeViewId: result?.activeViewId,
+                lastInteractedViewId: result?.lastInteractedViewId
+            };
+        }
+        catch {
+            return { tabs: [] };
+        }
     }
     async listTabs() {
         return (await this.getTabContext()).tabs;

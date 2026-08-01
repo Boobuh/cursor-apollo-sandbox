@@ -8,7 +8,7 @@ Exercises **real** `cursor.browserView.*` APIs inside the Cursor extension host.
 npm run test:e2e
 ```
 
-Writes `tmp/e2e-trigger.json` before launch; the extension reads it on activation, runs checks, writes `tmp/e2e-results.json`, then quits.
+Writes `tmp/e2e-trigger.json` before launch and sets `APOLLO_E2E=1` on the Cursor process. The extension only runs E2E hooks when that env var is set (a leftover trigger file alone will not quit Cursor). On activation it runs checks, writes `tmp/e2e-results.json`, then quits.
 
 Optional:
 

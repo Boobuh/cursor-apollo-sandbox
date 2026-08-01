@@ -40,7 +40,10 @@ const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const self_test_1 = require("./self-test");
 function readE2ETrigger(extensionPath) {
-    if (process.env.APOLLO_E2E === "1" && process.env.APOLLO_E2E_RESULTS) {
+    if (process.env.APOLLO_E2E !== "1") {
+        return undefined;
+    }
+    if (process.env.APOLLO_E2E_RESULTS) {
         return {
             resultsPath: process.env.APOLLO_E2E_RESULTS,
             graphqlUrl: process.env.APOLLO_E2E_GRAPHQL_URL
@@ -65,8 +68,10 @@ function selfTestCommands(api) {
             : undefined
     };
 }
-/** When E2E trigger file or APOLLO_E2E env is set, run self-tests and write results. */
+/** When APOLLO_E2E=1 and a trigger/results path is set, run self-tests and write results. */
 async function maybeRunE2EOnActivation(api, extensionPath) {
+    if (process.env.APOLLO_E2E !== "1")
+        return;
     const trigger = readE2ETrigger(extensionPath);
     if (!trigger?.resultsPath)
         return;
@@ -87,7 +92,14 @@ async function maybeRunE2EOnActivation(api, extensionPath) {
             }
         ];
     }
-    fs.writeFileSync(trigger.resultsPath, JSON.stringify({ results }, null, 2));
+    try {
+        fs.mkdirSync(path.dirname(trigger.resultsPath), { recursive: true });
+        fs.writeFileSync(trigger.resultsPath, JSON.stringify({ results }, null, 2));
+    }
+    catch (err) {
+        console.error("[Cursor Apollo Sandbox] E2E could not write results:", err instanceof Error ? err.message : String(err));
+        return;
+    }
     const triggerPath = path.join(extensionPath, "tmp", "e2e-trigger.json");
     try {
         fs.unlinkSync(triggerPath);
@@ -95,15 +107,22 @@ async function maybeRunE2EOnActivation(api, extensionPath) {
     catch {
         /* ignore */
     }
-    const summary = (0, self_test_1.summarizeSelfTestResults)(results);
-    if (summary.failed === 0) {
-        api.window.showInformationMessage(`Apollo Sandbox E2E: ${summary.passed} passed, ${summary.skipped} skipped`);
+    try {
+        const summary = (0, self_test_1.summarizeSelfTestResults)(results);
+        if (summary.failed === 0) {
+            api.window.showInformationMessage(`Apollo Sandbox E2E: ${summary.passed} passed, ${summary.skipped} skipped`);
+        }
+        else {
+            api.window.showErrorMessage(`Apollo Sandbox E2E: ${summary.failed} failed — see ${trigger.resultsPath}`);
+        }
     }
-    else {
-        api.window.showErrorMessage(`Apollo Sandbox E2E: ${summary.failed} failed — see ${trigger.resultsPath}`);
+    catch {
+        /* UI unavailable — results file is enough for the runner */
     }
     setTimeout(() => {
-        void api.commands.executeCommand("workbench.action.quit");
+        void Promise.resolve(api.commands.executeCommand("workbench.action.quit")).catch(() => {
+            /* ignore quit failures */
+        });
     }, 1500);
 }
 async function runSelfTestCommand(api) {
