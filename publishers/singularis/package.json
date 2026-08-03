@@ -5,6 +5,7 @@
   "version": "0.0.4",
   "publisher": "Singularis",
   "license": "MIT",
+  "icon": "media/icon.png",
   "galleryBanner": {
     "color": "#1e1e2e",
     "theme": "dark"
