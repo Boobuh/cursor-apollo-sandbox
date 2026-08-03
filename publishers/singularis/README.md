@@ -1,47 +1,24 @@
-# Singularis publisher
+# DEPRECATED — do not install
 
-Second VS Code / Open VSX publisher for extensions by **Boobuh**.
-**Cursor Apollo Sandbox** stays under publisher **`boobuh`**.
+**This is not Cursor Apollo Sandbox.**
 
-| Publisher ID | Extensions |
+| Install this instead | ID |
 | --- | --- |
-| `boobuh` | [cursor-apollo-sandbox](../../) |
-| `Singularis` | future extensions + this namespace bootstrap (v0.0.1) |
+| **Cursor Apollo Sandbox** | [`boobuh.cursor-apollo-sandbox`](https://open-vsx.org/extension/boobuh/cursor-apollo-sandbox) |
 
-## One-time: Visual Studio Marketplace
+## What happened
 
-1. Open [Create publisher](https://marketplace.visualstudio.com/manage/createpublisher)
-2. **Publisher ID:** `Singularis` (must match `package.json`)
-3. **Display name:** `Singularis`
-4. Create a [Personal Access Token](https://dev.azure.com/_users/settings/tokens) (Marketplace → Manage)
+`Singularis.singularis` was a **publisher namespace bootstrap** (empty placeholder) published while setting up a second Open VSX publisher. It accidentally looked like a duplicate of Apollo Sandbox because it shared the same icon and appeared in searches for `boobuh`.
 
-```bash
-cd publishers/singularis
-npm install
-npx @vscode/vsce login Singularis
-VSCE_PAT=*** npm run publish:marketplace
-```
+This listing is **retired**. New users should install **`boobuh.cursor-apollo-sandbox`** only.
 
-## Open VSX
+## If you already installed this
 
-From repo root (loads `OVSX_PAT` from `.env` if present):
+1. Uninstall **Singularis** (`Singularis.singularis`).
+2. Install **[Cursor Apollo Sandbox](https://open-vsx.org/extension/boobuh/cursor-apollo-sandbox)** (`boobuh.cursor-apollo-sandbox`).
 
-```bash
-npm run publish:singularis:openvsx
-```
+## Maintainers
 
-Or from this directory:
+Deprecation is tracked in [open-vsx/publish-extensions `extension-control/extensions.json`](https://github.com/open-vsx/publish-extensions/blob/master/extension-control/extensions.json).
 
-```bash
-OVSX_PAT=*** npm run publish:openvsx
-```
-
-Then claim ownership: [namespace request issue](https://github.com/EclipseFdn/open-vsx.org/issues/new?template=namespace_request.md) — title `Claiming namespace Singularis`.
-See `tmp/docs/openvsx-claim-namespace-Singularis.md` in lkq-be for a copy-paste body (after first publish).
-
-## Package only
-
-```bash
-npm run package
-# → singularis-0.0.1.vsix
-```
+Do **not** republish except to update deprecation messaging.

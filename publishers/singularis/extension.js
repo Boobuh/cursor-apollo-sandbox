@@ -1,14 +1,36 @@
 const vscode = require("vscode");
 
-/** @param {vscode.ExtensionContext} _context */
-function activate(_context) {
+const REPLACEMENT = "boobuh.cursor-apollo-sandbox";
+const MESSAGE =
+  "Singularis.singularis is a deprecated publisher placeholder — not Cursor Apollo Sandbox. " +
+  "Uninstall this and install boobuh.cursor-apollo-sandbox instead.";
+
+/** @param {vscode.ExtensionContext} context */
+function activate(context) {
+  void vscode.window
+    .showWarningMessage(MESSAGE, "Open Cursor Apollo Sandbox")
+    .then((choice) => {
+      if (choice) {
+        void vscode.commands.executeCommand(
+          "workbench.extensions.search",
+          REPLACEMENT
+        );
+      }
+    });
+
   const disposable = vscode.commands.registerCommand("singularis.about", () => {
-    void vscode.window.showInformationMessage(
-      "Singularis — publisher namespace for extensions by Boobuh. " +
-        "See publishers/singularis in the cursor-apollo-sandbox repo."
+    void vscode.window.showWarningMessage(MESSAGE, "Open Cursor Apollo Sandbox").then(
+      (choice) => {
+        if (choice) {
+          void vscode.commands.executeCommand(
+            "workbench.extensions.search",
+            REPLACEMENT
+          );
+        }
+      }
     );
   });
-  _context.subscriptions.push(disposable);
+  context.subscriptions.push(disposable);
 }
 
 function deactivate() {}

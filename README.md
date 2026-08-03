@@ -18,7 +18,7 @@
 
 ## Contributing
 
-Fork the repo and open a pull request — see [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md).  
+Fork the repo and open a pull request — see [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md).
 Changes to `main` require **code owner approval** ([@Boobuh](https://github.com/Boobuh)).
 
 ## Install from Marketplace
@@ -52,17 +52,10 @@ VSCE_PAT=*** npm run publish:marketplace
 
 See `scripts/publish.sh` for details.
 
-### Singularis (second publisher)
+### Singularis placeholder (deprecated)
 
-Future extensions can use publisher **`Singularis`**. Cursor Apollo Sandbox stays on **`boobuh`**.
-
-```bash
-cp .env.example .env   # add OVSX_PAT / VSCE_PAT
-npm run publish:singularis:openvsx      # Open VSX namespace bootstrap
-npm run publish:singularis:marketplace  # after creating publisher on Marketplace
-```
-
-Details: [`publishers/singularis/README.md`](publishers/singularis/README.md)
+The `Singularis.singularis` listing was a publisher namespace bootstrap and is **deprecated**.
+Use **`boobuh.cursor-apollo-sandbox`** only. See [`publishers/singularis/README.md`](publishers/singularis/README.md).
 
 ## Requirements
 
