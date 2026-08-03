@@ -1,8 +1,8 @@
 {
   "name": "singularis",
-  "displayName": "Singularis",
-  "description": "Publisher namespace for Singularis extensions by Boobuh. Placeholder package — future extensions ship under publisher Singularis.",
-  "version": "0.0.3",
+  "displayName": "[DEPRECATED] Singularis Publisher Placeholder",
+  "description": "DEPRECATED — not a functional extension. Install boobuh.cursor-apollo-sandbox (Cursor Apollo Sandbox) instead. This listing was a publisher namespace bootstrap and is being retired.",
+  "version": "0.0.4",
   "publisher": "Singularis",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -31,7 +31,7 @@
     "commands": [
       {
         "command": "singularis.about",
-        "title": "About Singularis Publisher",
+        "title": "About (deprecated placeholder)",
         "category": "Singularis"
       }
     ]
