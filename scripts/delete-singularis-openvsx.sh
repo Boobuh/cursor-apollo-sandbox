@@ -1,23 +1,59 @@
 #!/usr/bin/env bash
-# Remove Singularis.singularis from Open VSX (Cursor marketplace source).
-# Requires: logged in at https://open-vsx.org with GitHub (Boobuh account).
+# Delete an extension from Open VSX using your logged-in Chrome session.
+# Usage: ./scripts/delete-singularis-openvsx.sh [Namespace] [extension-name]
+# Requires: Chrome signed in to open-vsx.org, python3, browser-cookie3, requests.
 set -euo pipefail
 
-echo "Remove Singularis.singularis from Open VSX"
-echo "========================================="
-echo ""
-echo "Open VSX search for 'boobuh' already excludes Singularis (v0.0.4+)."
-echo "If Cursor still shows the old listing, delete all versions here:"
-echo ""
-echo "  1. Open https://open-vsx.org (Sign in with GitHub if needed)"
-echo "  2. Profile (top right) → Settings → Extensions"
-echo "  3. Find 'singularis' under publisher Singularis"
-echo "  4. Trash icon → select ALL versions (0.0.1 … 0.0.4) → Delete"
-echo "  5. Restart Cursor (or Developer: Reload Window) to refresh marketplace cache"
-echo ""
+NAMESPACE="${1:-Singularis}"
+EXTENSION="${2:-singularis}"
 
-if command -v xdg-open >/dev/null 2>&1; then
-  xdg-open "https://open-vsx.org/" 2>/dev/null || true
-elif command -v open >/dev/null 2>&1; then
-  open "https://open-vsx.org/" 2>/dev/null || true
-fi
+python3 - "$NAMESPACE" "$EXTENSION" <<'PY'
+import sys
+
+try:
+    import browser_cookie3
+    import requests
+except ImportError:
+    print("Install deps: pip install browser-cookie3 requests", file=sys.stderr)
+    sys.exit(1)
+
+namespace, extension = sys.argv[1], sys.argv[2]
+session = requests.Session()
+session.cookies = browser_cookie3.chrome(domain_name="open-vsx.org")
+
+csrf = session.get("https://open-vsx.org/user/csrf", timeout=30).json()
+header = csrf.get("header", "X-CSRF-TOKEN")
+value = csrf["value"]
+
+meta = session.get(
+    f"https://open-vsx.org/user/extension/{namespace}/{extension}", timeout=30
+)
+if meta.status_code == 404:
+    print(f"Already gone: {namespace}.{extension}")
+    sys.exit(0)
+meta.raise_for_status()
+
+versions = meta.json().get("versions") or []
+if not versions:
+    print(f"No versions found for {namespace}.{extension}")
+    sys.exit(1)
+
+body = [
+    {"version": v["version"], "targetPlatform": tp}
+    for v in versions
+    for tp in v.get("targetPlatforms", ["universal"])
+]
+
+resp = session.post(
+    f"https://open-vsx.org/user/extension/{namespace}/{extension}/delete",
+    json=body,
+    headers={"Content-Type": "application/json", header: value},
+    timeout=30,
+)
+resp.raise_for_status()
+data = resp.json()
+if not data.get("success"):
+    print("Delete failed:", data, file=sys.stderr)
+    sys.exit(1)
+print(f"Deleted {namespace}.{extension}")
+PY
